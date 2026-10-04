@@ -268,11 +268,18 @@ pub const Game = struct {
     }
 
     /// 连片翻开：只在空白格上继续扩散。返回新翻开的格数。
+    ///
+    /// `queued` 标记已经进过栈的格子。同一格会被相邻的多个空白格重复压栈：一个
+    /// 40×30 的大空白区就能把 [MAX_CELLS] 的栈塞满，栈满时只能丢掉这次压栈，于是
+    /// 留下本该翻开的格子（自定义盘上一次能漏几百格）。查重之后每格最多进栈一次，
+    /// 栈内元素不会多于格数，也就塞不满。
     pub fn cascadeOpen(self: *Game, seeds: []const usize) usize {
         var stack: [MAX_CELLS]usize = undefined;
+        var queued = [_]bool{false} ** MAX_CELLS;
         var sp: usize = 0;
         for (seeds) |s| {
-            if (sp < stack.len) {
+            if (!queued[s]) {
+                queued[s] = true;
                 stack[sp] = s;
                 sp += 1;
             }
@@ -289,7 +296,11 @@ pub const Game = struct {
                 var buf: [8]usize = undefined;
                 const k = self.nbrs(i, &buf);
                 for (buf[0..k]) |j| {
-                    if (self.open[j] == 0 and self.mine[j] == 0 and self.flag[j] == 0 and sp < stack.len) {
+                    // 查重必须标在**压栈时**。改成弹出时才标，同一个格子会被相邻的
+                    // 多个空白格重复压进去，栈照样能塞满。
+                    if (!queued[j] and self.open[j] == 0 and self.mine[j] == 0 and self.flag[j] == 0) {
+                        queued[j] = true;
+                        std.debug.assert(sp < stack.len);
                         stack[sp] = j;
                         sp += 1;
                     }

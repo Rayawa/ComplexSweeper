@@ -202,6 +202,52 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "4 连片展开：空白样本 {d}，显示 0 样本 {d}，不一致 {d}，翻雷 {d}\n", .{ samples, zero_samples, mismatch, mine_opened });
     }
 
+    // ---- 4b. 大盘开局连片：栈吃满也不许漏格 ----
+    // 40×30 这种大盘上，一片空白会让同一个格子被反复压入，把 [MAX_CELLS] 的栈吃满；
+    // 栈满就只能丢掉多出来的相邻格，留下本该翻开的格子（玩家看得见）。这条专门覆盖
+    // MAX_W × MAX_H，把开局连片的结果与独立洪水填充逐格比对。
+    {
+        const shapes = [_]struct { w: u16, h: u16, m: u16 }{
+            .{ .w = 40, .h = 30, .m = 1 },
+            .{ .w = 40, .h = 30, .m = 5 },
+            .{ .w = 40, .h = 30, .m = 20 },
+            .{ .w = 40, .h = 30, .m = 60 },
+            .{ .w = 40, .h = 20, .m = 40 },
+            .{ .w = 30, .h = 30, .m = 60 },
+        };
+        var mismatch: u32 = 0;
+        var opened_mine: u32 = 0;
+        var samples: u32 = 0;
+        var big: u32 = 0;
+        var worst: usize = 0;
+        for (shapes) |sh| {
+            const bw: usize = sh.w;
+            const bh: usize = sh.h;
+            // 角、上边中点、正中、右下角：换着开局格，覆盖不同的扩散顺序
+            const starts = [_]usize{ 0, bw / 2, (bh / 2) * bw + bw / 2, bw * bh - 1 };
+            for ([_]u32{ 4111, 4127, 4133, 4139, 4153, 4159 }) |seed| {
+                for (starts) |st| {
+                    buildBoard(&game, sh.w, sh.h, sh.m, [_]u16{0} ** 5, seed, st);
+                    var want: [g.MAX_CELLS]bool = undefined;
+                    expectedCascade(&game, st, &want);
+                    for (0..game.n) |k| {
+                        if ((game.open[k] != 0) != want[k]) mismatch += 1;
+                        if (game.open[k] != 0 and game.mine[k] != 0) opened_mine += 1;
+                    }
+                    const oc = game.openedCount();
+                    if (oc > worst) worst = oc;
+                    if (oc >= 400) big += 1;
+                    samples += 1;
+                }
+            }
+        }
+        expect(out, samples >= 72, "大盘连片样本数足够（6 种盘面 × 6 种子 × 4 开局格）");
+        expect(out, big >= 8, "大盘样本里应有真正的大连片（≥400 格）");
+        expect(out, mismatch == 0, "大盘开局连片必须与独立洪水填充逐格一致（栈吃满也不许漏格）");
+        expect(out, opened_mine == 0, "大盘连片也绝不能翻开雷");
+        note(out, "4b 大盘连片：样本 {d}，大连片 {d} 次，一次最多翻开 {d} 格，逐格不一致 {d}\n", .{ samples, big, worst, mismatch });
+    }
+
     // ---- 5. 开局必定连片且不踩雷 ----
     {
         var bad: u32 = 0;

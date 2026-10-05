@@ -986,6 +986,93 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         }
     }
 
+// 15) 失败/胜利后的判定贴图：标错雷 / 标错空格子 / 标对雷 / 标对旗 / 标错旗
+    {
+        const gm = ui.game_ptr;
+        const S = ui.SpriteFamily;
+        var nbuf: [8]usize = undefined;
+        // 干净的小盘：5×5，中央 12 周围摆三种雷（1 正实 / 2 负实 / 3 正虚）
+        const setup = struct {
+            fn go(g2: *g.Game) void {
+                g2.w = 5;
+                g2.h = 5;
+                g2.n = 25;
+                g2.mode = .complex;    // 别受前面几组留下的模式影响
+                g2.started = true;
+                g2.over = false;
+                g2.win = false;
+                g2.boom = -1;
+                for (0..25) |k| {
+                    g2.mine[k] = 0;
+                    g2.flag[k] = 0;
+                    g2.open[k] = 0;
+                    g2.clue[k] = -1;
+                }
+            }
+        }.go;
+        setup(gm);
+        _ = gm.nbrs(12, &nbuf);
+        gm.mine[nbuf[0]] = 3;   // 正虚雷（双曲模式下就是正 j 雷）
+        gm.mine[nbuf[1]] = 1;   // 正实雷
+        gm.mine[nbuf[2]] = 2;   // 负实雷
+        gm.computeClues();
+
+// 15a 失败局面
+        gm.over = true;
+        gm.win = false;
+        _ = gm.setFlag(nbuf[0], 1);           // 正虚雷插成了正实旗 → 标错雷，按真实雷型（3）出图
+        _ = gm.setFlag(nbuf[1], 1);           // 正实雷插对了 → 标对雷
+        _ = gm.setFlag(nbuf[3], 4);           // 空格子插了旗 → 标错空格子
+        expect(out, ui.testCellSprite(nbuf[0]) == ui.testSprite(S.wrong, false, 3), "失败：旗插错要贴「标错+真实雷型」那张，不是玩家插错的那型");
+        expect(out, ui.testCellSprite(nbuf[0]) != ui.testSprite(S.wrong, false, 1), "失败：标错雷不能按玩家插错的旗型选图");
+        expect(out, ui.testCellSprite(nbuf[1]) == ui.testSprite(S.right, false, 1), "失败：插对了要贴「标对正实雷」");
+        expect(out, ui.testCellSprite(nbuf[3]) == ui.testWrongBlankSprite, "失败：给空格子插旗要贴「标错空格子」");
+        expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.mine, false, 2), "失败：没插旗的雷照旧显示雷本身");
+        expect(out, ui.testSprite(S.mine, false, 2) != ui.testSprite(S.right, false, 2), "标对雷与雷本身不能是同一张");
+
+// 15b 胜利局面（胜利时所有非雷格都已翻开，所以旗只会在雷上）
+        setup(gm);
+        _ = gm.nbrs(12, &nbuf);
+        gm.mine[nbuf[0]] = 3;
+        gm.mine[nbuf[1]] = 1;
+        gm.mine[nbuf[2]] = 2;
+        gm.computeClues();
+        gm.over = true;
+        gm.win = true;
+        _ = gm.setFlag(nbuf[0], 3);           // 插对了 → 标对旗
+        _ = gm.setFlag(nbuf[2], 1);           // 插错了 → 标错旗（按真实雷型 2）
+        expect(out, ui.testCellSprite(nbuf[0]) == ui.testSprite(S.rightflag, false, 3), "胜利：插对了要贴「标对正虚旗」");
+        expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.wrongflag, false, 2), "胜利：插错了要贴「标错+真实雷型」那张");
+        expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.wrongflag, false, 1), "胜利：标错旗也不能按玩家插错的旗型选图");
+        expect(out, ui.testCellSprite(nbuf[1]) == ui.testClosedSprite, "胜利：没插旗的雷不该翻开（还是闭格）");
+
+// 15c 双曲模式：3/4 两种雷换成 j 系列贴图
+        gm.mode = .hyper;
+        expect(out, ui.testSprite(S.mine, true, 1) == ui.testSprite(S.mine, false, 1), "双曲模式的实雷与复数模式共用贴图");
+        expect(out, ui.testSprite(S.mine, true, 3) != ui.testSprite(S.mine, false, 3), "双曲模式的 j 雷要换成 j 自己的贴图");
+        expect(out, ui.testSprite(S.flag, true, 3) != ui.testSprite(S.flag, false, 3), "双曲模式的 j 旗要换成 j 自己的贴图");
+        setup(gm);
+        gm.mode = .hyper;
+        _ = gm.nbrs(12, &nbuf);
+        gm.mine[nbuf[0]] = 3;
+        gm.mine[nbuf[2]] = 4;
+        gm.computeClues();
+        gm.over = true;
+        gm.win = false;
+        _ = gm.setFlag(nbuf[0], 1);
+        expect(out, ui.testCellSprite(nbuf[0]) == ui.testSprite(S.wrong, true, 3), "双曲模式失败：标错雷要用 j 版那张");
+        gm.over = false;
+        gm.win = false;
+        expect(out, ui.testCellSprite(nbuf[1]) == ui.testClosedSprite, "双曲模式中途：没插旗的格子仍是闭格");
+        gm.boom = @intCast(nbuf[2]);
+        gm.open[nbuf[2]] = 1;
+        expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.boom, true, 4), "双曲模式踩中的 j 雷要用 j 版踩中贴图");
+        expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.boom, false, 4), "双曲模式踩中贴图不能沿用复数模式的");
+        gm.mode = .complex;
+        gm.boom = -1;
+        out.writer().print("15 判定贴图：标错雷/标错空格子/标对雷/标对旗/标错旗 + 双曲 j 系列 通过\n", .{}) catch {};
+    }
+
     out.writer().print("\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails }) catch {};
     out.writer().print("{s}\n", .{if (fails == 0) "全部通过" else "存在失败"}) catch {};
     return fails;

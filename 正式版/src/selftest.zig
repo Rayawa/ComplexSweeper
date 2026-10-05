@@ -619,6 +619,35 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "11c 双曲判据（推荐 / 备选两档）：通过\n", .{});
     }
 
+// ---- 12. 判定贴图表：不许有空洞，实雷两个模式共用 ----
+    {
+        const tables = [_][5]u16{
+            A.mine_T,  A.hmine_T,
+            A.flag_T,  A.hflag_T,
+            A.boom_T,  A.hboom_T,
+            A.wrong_T, A.hwrong_T,
+            A.right_T, A.hright_T,
+            A.rightflag_T, A.hrightflag_T,
+            A.wrongflag_T, A.hwrongflag_T,
+        };
+        var bad: u32 = 0;
+        for (tables) |t| {
+            for (1..5) |k| {
+                if (t[k] >= A.count) bad += 1;      // 越界 = 生成器写错了
+            }
+        }
+        expect(out, bad == 0, "判定贴图表里每一张都应是合法槽位号");
+        var shared_ok = true;
+        for (1..3) |k| {
+            if (A.mine_T[k] != A.hmine_T[k] or A.flag_T[k] != A.hflag_T[k] or A.boom_T[k] != A.hboom_T[k] or
+                A.wrong_T[k] != A.hwrong_T[k] or A.right_T[k] != A.hright_T[k]) shared_ok = false;
+        }
+        expect(out, shared_ok, "1/2 两种实雷在两个模式下必须共用同一批贴图");
+        expect(out, A.hmine_T[3] != A.mine_T[3] and A.hflag_T[4] != A.flag_T[4], "3/4 在双曲模式下应换成 j 版贴图");
+        expect(out, A.wrongblank_sprite < A.count, "「标错空格子」应指向合法槽位");
+        note(out, "12 判定贴图表：通过（实雷共用、j 版独立、无空洞）\n", .{});
+    }
+
     note(out, "\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails });
     note(out, "{s}\n", .{if (fails == 0) "全部通过" else "存在失败"});
     return fails;

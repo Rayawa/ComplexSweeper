@@ -1,4 +1,4 @@
-// 复扫雷 正式版 · 主程序
+﻿// 复扫雷 正式版 · 主程序
 // 纯 Win32 + GDI，无第三方库、无 libc、无运行时依赖，编译结果为单个 exe。
 const std = @import("std");
 const w = @import("win32.zig");
@@ -494,37 +494,33 @@ fn paint(dc: w.HDC, L: Layout) void {
     // 没有状态行：原版扫雷底部就是空的（判据不通过时不作任何提示，只留状态枚举给自检）
 }
 
-fn flagSprite(t: u8) u16 {
-    return switch (t) {
-        1 => A.flag_1,
-        2 => A.flag_2,
-        3 => A.flag_3,
-        else => A.flag_4,
-    };
-}
+/// 贴图按"雷的类型"查表（1 正实 / 2 负实 / 3 正虚·正 j / 4 负虚·负 j）。
+/// 1、2 两种实雷两个模式共用；3、4 在双曲模式下换成 h 前缀那几张（±j 的画法不同）。
+/// 表由 tools/gen_atlas.js 生成，缺哪张会自动退回上一档，见 src/assets.zig。
 fn mineSprite(t: u8) u16 {
-    return switch (t) {
-        1 => A.mine_1,
-        2 => A.mine_2,
-        3 => A.mine_3,
-        else => A.mine_4,
-    };
+    return (if (hyper()) A.hmine_T else A.mine_T)[@min(@as(usize, t), 4)];
+}
+fn flagSprite(t: u8) u16 {
+    return (if (hyper()) A.hflag_T else A.flag_T)[@min(@as(usize, t), 4)];
 }
 fn boomSprite(t: u8) u16 {
-    return switch (t) {
-        1 => A.boom_1,
-        2 => A.boom_2,
-        3 => A.boom_3,
-        else => A.boom_4,
-    };
+    return (if (hyper()) A.hboom_T else A.boom_T)[@min(@as(usize, t), 4)];
 }
+/// 标错雷：这一格插错了旗，按**真实雷型**出图，提醒玩家正确答案
 fn wrongSprite(t: u8) u16 {
-    return switch (t) {
-        1 => A.wrong_1,
-        2 => A.wrong_2,
-        3 => A.wrong_3,
-        else => A.wrong_4,
-    };
+    return (if (hyper()) A.hwrong_T else A.wrong_T)[@min(@as(usize, t), 4)];
+}
+/// 标对雷：这一格插对了（失败后显示，让玩家看出自己判断对的地方）
+fn rightSprite(t: u8) u16 {
+    return (if (hyper()) A.hright_T else A.right_T)[@min(@as(usize, t), 4)];
+}
+/// 标对旗：胜利后显示"这一格的旗插对了"
+fn rightFlagSprite(t: u8) u16 {
+    return (if (hyper()) A.hrightflag_T else A.rightflag_T)[@min(@as(usize, t), 4)];
+}
+/// 标错旗：胜利后显示"这一格的旗插错了"，同样按真实雷型出图
+fn wrongFlagSprite(t: u8) u16 {
+    return (if (hyper()) A.hwrongflag_T else A.wrongflag_T)[@min(@as(usize, t), 4)];
 }
 
 /// 这一格能不能作为展开的起点（门槛和 Game.tryExpand 一致：已翻开的非雷格，且还有未插旗的邻格）
@@ -575,9 +571,22 @@ fn cellSprite(i: usize) u16 {
         return if (s == 0xFFFF) A.blank else s;
     }
     if (game.flag[i] != 0) {
-        const right = game.mine[i] == game.flag[i];
-        if (revealed and !right) return wrongSprite(game.flag[i]);
-        return flagSprite(game.flag[i]);
+        const t = game.mine[i];                  // 0 = 这里其实不是雷
+        const f = game.flag[i];                  // 玩家插的旗的类型
+        if (revealed) {
+            // 失败后的复盘：给空格子插了旗 → 标错空格子；插错了 → 标错雷（按真实雷型）；
+            // 插对了 → 标对雷（让玩家看见自己判断对的地方）
+            if (t == 0) return A.wrongblank_sprite;
+            if (f == t) return rightSprite(t);
+            return wrongSprite(t);
+        }
+        if (game.win) {
+            // 胜利后的复盘：胜利时所有非雷格都已经翻开，所以这里的旗都在雷上。
+            // 插对了 → 标对旗；插错了 → 标错旗（同样按真实雷型出图）
+            if (t != 0 and f == t) return rightFlagSprite(t);
+            return wrongFlagSprite(if (t != 0) t else f);
+        }
+        return flagSprite(f);
     }
     if (revealed and game.mine[i] != 0) return mineSprite(game.mine[i]);
     return A.closed;
@@ -1702,6 +1711,8 @@ fn parseArgs() void {
         if (std.mem.eql(u8, arg, "--demo-win")) demo_mode = .win;
         if (std.mem.eql(u8, arg, "--custom")) demo_mode = .custom;
         if (std.mem.eql(u8, arg, "--demo-hyper")) demo_mode = .hyper;
+        if (std.mem.eql(u8, arg, "--demo-judge")) demo_mode = .judge_lose;
+        if (std.mem.eql(u8, arg, "--demo-judge-win")) demo_mode = .judge_win;
         if (std.mem.eql(u8, arg, "--zoom1")) zoom = 1;
         if (std.mem.eql(u8, arg, "--zoom2")) zoom = 2;
         if (std.mem.eql(u8, arg, "--zoom3")) zoom = 3;
@@ -1723,13 +1734,95 @@ fn parseArgs() void {
 var window_shot = false;
 var sheet_mode = false;
 
-const DemoMode = enum { none, mid, lose, win, custom, hyper };
+const DemoMode = enum { none, mid, lose, win, custom, hyper, judge_lose, judge_win };
 var demo_mode: DemoMode = .none;
 
 /// 造一个可复现的局面用于截图核对
 fn setupDemo() void {
     switch (demo_mode) {
         .none => return,
+        // 失败后的复盘现场：找一块已翻开的数字格，把它的邻域做成
+        // "一颗插对 + 一颗插错 + 一个空格子插旗"，最后再踩一颗没标过的雷结束
+        .judge_lose => {
+            game.mode = .complex;
+            game.w = 16;
+            game.h = 16;
+            game.mines = 40;
+            game.newGame(20260101);
+            game.startAt(8 * 16 + 8, 0);
+            game.setMsg(.started);
+            game.elapsed_ms = 61_000;
+            syncMode();
+            var host: usize = 0;
+            var found = false;
+            for (0..game.n) |i| {
+                if (game.open[i] == 0 or game.mine[i] != 0) continue;
+                var buf: [8]usize = undefined;
+                const k = game.nbrs(i, &buf);
+                var mi: u32 = 0;
+                var fr: u32 = 0;
+                for (buf[0..k]) |j| {
+                    if (game.mine[j] != 0) {
+                        mi += 1;
+                    } else if (game.open[j] == 0) {
+                        fr += 1;
+                    }
+                }
+                if (mi >= 2 and fr >= 1) {
+                    host = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                var buf: [8]usize = undefined;
+                const k = game.nbrs(host, &buf);
+                var mi: u32 = 0;
+                var fr: u32 = 0;
+                for (buf[0..k]) |j| {
+                    if (game.mine[j] != 0) {
+                        mi += 1;
+                        // 第一颗插对，第二颗插错
+                        const f: u8 = if (mi == 1) game.mine[j] else @as(u8, if (game.mine[j] == 1) 2 else 1);
+                        _ = game.setFlag(j, f);
+                    } else if (game.open[j] == 0 and fr == 0) {
+                        _ = game.setFlag(j, 3);
+                        fr += 1;
+                    }
+                }
+            }
+            for (0..game.n) |i| {
+                if (game.mine[i] != 0 and game.flag[i] == 0) {
+                    game.reveal(i, 0);
+                    break;
+                }
+            }
+            return;
+        },
+        // 胜利后的复盘现场：初级盘，雷上隔一颗插对、隔一颗插错，再翻开全部非雷格
+        .judge_win => {
+            game.mode = .complex;
+            game.w = 9;
+            game.h = 9;
+            game.mines = 10;
+            game.newGame(20260101);
+            game.startAt(40, 0);
+            game.setMsg(.started);
+            game.elapsed_ms = 27_000;
+            syncMode();
+            var mi: u32 = 0;
+            for (0..game.n) |i| {
+                if (game.mine[i] == 0) continue;
+                mi += 1;
+                const f: u8 = if (mi % 2 == 1) game.mine[i] else @as(u8, if (game.mine[i] == 1) 2 else 1);
+                _ = game.setFlag(i, f);
+            }
+            for (0..game.n) |i| {
+                if (game.mine[i] == 0 and game.open[i] == 0) game.reveal(i, 0);
+            }
+            afterGameAction(hwnd_main);
+            return;
+        },
         .hyper => {
             // 双曲复数模式的截图盘：中间开一片，边上一排旗（四种雷各几面），
             // 用来核对负数显示、i 单位、计雷器第四格的 j。
@@ -2155,6 +2248,21 @@ pub const testLedJSprite = A.led_j;
 pub fn testHnumSprite(D: i32) u16 {
     return A.hnum_by_D[@intCast(D + 64)];
 }
+/// 判定贴图查表：家族 × 模式 × 雷的类型（自检拿它核对"该贴哪一张"）
+pub const SpriteFamily = enum { mine, flag, boom, wrong, right, rightflag, wrongflag };
+pub fn testSprite(f: SpriteFamily, hyper_mode: bool, t: u8) u16 {
+    const tbl = switch (f) {
+        .mine => if (hyper_mode) A.hmine_T else A.mine_T,
+        .flag => if (hyper_mode) A.hflag_T else A.flag_T,
+        .boom => if (hyper_mode) A.hboom_T else A.boom_T,
+        .wrong => if (hyper_mode) A.hwrong_T else A.wrong_T,
+        .right => if (hyper_mode) A.hright_T else A.right_T,
+        .rightflag => if (hyper_mode) A.hrightflag_T else A.rightflag_T,
+        .wrongflag => if (hyper_mode) A.hwrongflag_T else A.wrongflag_T,
+    };
+    return tbl[@min(@as(usize, t), 4)];
+}
+pub const testWrongBlankSprite = A.wrongblank_sprite;
 /// 两套纪录键名确实是两套（防"加了模式却忘了换键"）
 pub fn testScoreKeysDiffer() bool {
     for (0..3) |i| {

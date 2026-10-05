@@ -154,7 +154,8 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
     expect(out, ui.testMenuHasId(ui.test_IDM_HELP_HOW), "帮助菜单应有「玩法与操作」");
     expect(out, ui.testMenuHasId(ui.test_IDM_HELP_ABOUT), "帮助菜单应有「关于」");
     expect(out, !ui.testMenuHasId(ui.test_IDM_HELP_TABLE_REMOVED), "「显示值对照表」应从菜单里删掉");
-    expect(out, ui.testMenuHasId(ui.test_IDM_BEST), "游戏菜单应有「最高分纪录」");
+    expect(out, ui.testMenuHasId(ui.test_IDM_BEST), "复数模式子菜单里应有「最高分纪录」");
+    expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEST), "双曲复数模式子菜单里应有「最高分纪录」");
     out.writer().print("2 缩放菜单：通过\n", .{}) catch {};
 
 // 3) 左键：按下预览、松开翻开
@@ -893,14 +894,21 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
 // 14a 菜单结构：游戏菜单 = 开局、分隔线、复数模式▸、双曲复数模式▸、分隔线、纪录、分隔线、三个缩放、分隔线、退出
         expect(out, ui.testPopupItemId(0, 0) == @as(i32, @intCast(ui.test_IDM_NEW)), "游戏菜单第一项应是开局");
         expect(out, ui.testPopupItemId(0, 1) == 0, "游戏菜单第二项应是分隔线（ID 0）");
-        expect(out, ui.testPopupCount(0) == 12, "游戏菜单应是 12 项（开局/分隔线/两个模式/分隔线/纪录/分隔线/三个缩放/分隔线/退出）");
+        expect(out, ui.testPopupCount(0) == 10, "游戏菜单顶层应是 10 项（开局/分隔线/两个模式/分隔线/三个缩放/分隔线/退出）");
         expect(out, ui.testSubItemId(0, 2, 0) == @as(i32, @intCast(ui.test_IDM_BEGINNER)), "复数模式子菜单第一项应是初级");
         expect(out, ui.testSubItemId(0, 2, 2) == @as(i32, @intCast(ui.test_IDM_EXPERT)), "复数模式子菜单第三项应是高级");
         expect(out, ui.testSubItemId(0, 2, 3) == 0, "复数模式子菜单第四项应是分隔线（ID 0）");
-        expect(out, ui.testSubItemId(0, 2, 4) == @as(i32, @intCast(ui.test_IDM_CUSTOM)), "复数模式子菜单最后一项应是自定义雷区");
+        expect(out, ui.testSubItemId(0, 2, 4) == @as(i32, @intCast(ui.test_IDM_BEST)), "复数模式子菜单应有最高分纪录");
+        expect(out, ui.testSubItemId(0, 2, 5) == @as(i32, @intCast(ui.test_IDM_CUSTOM)), "复数模式子菜单最后一项应是自定义雷区");
         expect(out, ui.testSubItemId(0, 3, 0) == @as(i32, @intCast(ui.test_IDM_HYPER_BEGINNER)), "双曲复数模式子菜单第一项应是初级");
         expect(out, ui.testSubItemId(0, 3, 2) == @as(i32, @intCast(ui.test_IDM_HYPER_EXPERT)), "双曲复数模式子菜单第三项应是高级");
-        expect(out, ui.testSubItemId(0, 3, 4) == @as(i32, @intCast(ui.test_IDM_HYPER_CUSTOM)), "双曲复数模式子菜单最后一项应是自定义雷区");
+        expect(out, ui.testSubItemId(0, 3, 4) == @as(i32, @intCast(ui.test_IDM_HYPER_BEST)), "双曲复数模式子菜单应有最高分纪录");
+        expect(out, ui.testSubItemId(0, 3, 5) == @as(i32, @intCast(ui.test_IDM_HYPER_CUSTOM)), "双曲复数模式子菜单最后一项应是自定义雷区");
+        var best_at_top = false;
+        for (0..10) |k| {
+            if (ui.testPopupItemId(0, @intCast(k)) == @as(i32, @intCast(ui.test_IDM_BEST))) best_at_top = true;
+        }
+        expect(out, !best_at_top, "最高分纪录不该再留在游戏菜单顶层（两条都在模式里）");
         expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEGINNER), "菜单树里应能找到双曲初级");
         expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_CUSTOM), "菜单树里应能找到双曲自定义");
 

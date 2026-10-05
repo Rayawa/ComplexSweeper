@@ -1,4 +1,4 @@
-﻿// 复扫雷 正式版 · 主程序
+// 复扫雷 正式版 · 主程序
 // 纯 Win32 + GDI，无第三方库、无 libc、无运行时依赖，编译结果为单个 exe。
 const std = @import("std");
 const w = @import("win32.zig");
@@ -24,6 +24,8 @@ const IDM_HYPER_BEGINNER: usize = 120;
 const IDM_HYPER_INTERMEDIATE: usize = 121;
 const IDM_HYPER_EXPERT: usize = 122;
 const IDM_HYPER_CUSTOM: usize = 123;
+/// 双曲模式的那份最高分纪录（两个模式各记一套，所以菜单里也是两条）
+const IDM_HYPER_BEST: usize = 124;
 const IDM_ZOOM1: usize = 110;
 const IDM_ZOOM2: usize = 111;
 const IDM_ZOOM3: usize = 112;
@@ -636,7 +638,7 @@ fn repaint(hwnd: w.HWND) void {
 /// 窗口标题固定不变（难度、局面信息都不往标题里塞）
 const APP_TITLE = "复扫雷 Complexweeper";
 /// 版本号：**只有这一处**。以后每次改动都顺手把它 +1，关于对话框与两个自检报告的抬头都读它。
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.1.2";
 
 // ------------------------------------------------------------------ 棋盘交互
 fn cellAt(L: Layout, px: i32, py: i32) i32 {
@@ -981,8 +983,8 @@ const REG_PATH = "Software\\Complexweeper";
 /// 两个模式的难度档位虽然同名同尺寸，但盘面数值规则不同，混在一张表里比时间没有意义。
 const SCORE_VALUES_CPLX = [3][*:0]const u16{ w.wstr("Beginner"), w.wstr("Intermediate"), w.wstr("Expert") };
 const SCORE_VALUES_HYPER = [3][*:0]const u16{ w.wstr("HyperBeginner"), w.wstr("HyperIntermediate"), w.wstr("HyperExpert") };
-fn scoreKeys() [3][*:0]const u16 {
-    return if (hyper()) SCORE_VALUES_HYPER else SCORE_VALUES_CPLX;
+fn scoreKeys(m: g.Mode) [3][*:0]const u16 {
+    return if (m == .hyper) SCORE_VALUES_HYPER else SCORE_VALUES_CPLX;
 }
 /// 纪录窗里只出现这三行：难度名 + 用时。棋盘尺寸不写（"游戏"菜单里有），
 /// 名字统一两字，等宽字体下三行的用时正好对齐一列。
@@ -1005,22 +1007,30 @@ fn presetIndex() i32 {
     return -1;
 }
 
-fn loadScores() void {
-    best_scores = [3]i32{ 0, 0, 0 };
-    // 自检模式整个不碰纪录表：既不写、也不读（否则本机真玩出来的纪录会串进自检的预期里）
-    if (!scores_persist) return;
+/// 读某个模式的整套纪录（三档）。菜单里两个模式各有一条「最高分纪录」，
+/// 点哪条看哪套，所以这里不认"当前模式"，按传进来的模式读。
+/// 自检模式整个不碰纪录表：既不写、也不读（否则本机真玩出来的纪录会串进自检的预期里）。
+fn readScores(m: g.Mode) [3]i32 {
+    var out = [3]i32{ 0, 0, 0 };
+    if (!scores_persist) return out;
     var hkey: usize = 0;
-    if (w.RegOpenKeyExW(w.HKEY_CURRENT_USER, w.wstr(REG_PATH), 0, w.KEY_READ, &hkey) != w.ERROR_SUCCESS) return;
+    if (w.RegOpenKeyExW(w.HKEY_CURRENT_USER, w.wstr(REG_PATH), 0, w.KEY_READ, &hkey) != w.ERROR_SUCCESS) return out;
     defer _ = w.RegCloseKey(hkey);
-    const keys = scoreKeys();
+    const keys = scoreKeys(m);
     for (0..3) |i| {
         var data: u32 = 0;
         var size: u32 = @sizeOf(u32);
         var kind: u32 = 0;
         if (w.RegQueryValueExW(hkey, keys[i], null, &kind, @ptrCast(&data), &size) == w.ERROR_SUCCESS) {
-            best_scores[i] = @intCast(data);
+            out[i] = @intCast(data);
         }
     }
+    return out;
+}
+
+/// 当前模式那套纪录（结算时用）
+fn loadScores() void {
+    best_scores = readScores(game.mode);
 }
 
 fn saveScores() void {
@@ -1028,7 +1038,7 @@ fn saveScores() void {
     var hkey: usize = 0;
     if (w.RegCreateKeyExW(w.HKEY_CURRENT_USER, w.wstr(REG_PATH), 0, null, w.REG_OPTION_NON_VOLATILE, w.KEY_WRITE, null, &hkey, null) != w.ERROR_SUCCESS) return;
     defer _ = w.RegCloseKey(hkey);
-    const keys = scoreKeys();
+    const keys = scoreKeys(game.mode);
     for (0..3) |i| {
         if (best_scores[i] <= 0) continue;
         const v: u32 = @intCast(best_scores[i]);
@@ -1069,26 +1079,30 @@ fn appendNL(buf: []u16, n: *usize) void {
 }
 
 /// 装配「最高分纪录」的正文：只有三档纪录本身（没纪录的档给占位符）。对话框与自检共用这一段。
-fn buildScoresText(buf: []u16) usize {
+fn buildScoresText(buf: []u16, scores: [3]i32) usize {
     var n: usize = 0;
     for (0..3) |i| {
         appendW(buf, &n, SCORE_LABEL[i]);
         appendW(buf, &n, w.wstr("      "));
-        appendDigits(buf, &n, best_scores[i]);
-        if (best_scores[i] > 0) appendW(buf, &n, w.wstr(" 秒"));
+        appendDigits(buf, &n, scores[i]);
+        if (scores[i] > 0) appendW(buf, &n, w.wstr(" 秒"));
         appendNL(buf, &n);
     }
     return n;
 }
 
-/// 弹出"最高分纪录"：只有三档的纪录本身，别的都不写。
-/// 刚破纪录时标题换成"新纪录！"（`highlight`）。
-fn showBestScores(highlight: bool) void {
+/// 弹出"最高分纪录"：只有三档的纪录本身，别的都不写。标题带上模式名
+/// —— 两个模式各记一套，不写清楚会以为混在一起。刚破纪录时标题换成"新纪录！"。
+fn showBestScores(highlight: bool, m: g.Mode) void {
     var buf: [512]u16 = undefined;
-    const n = buildScoresText(&buf);
+    const n = buildScoresText(&buf, readScores(m));
     buf[n] = 0;
-    const title = if (highlight) w.wstr("新纪录！") else w.wstr("最高分纪录");
-    _ = w.MessageBoxW(hwnd_main, @ptrCast(&buf), title, w.MB.OK | w.MB.ICONINFORMATION);
+    var tb: [64]u16 = undefined;
+    var k: usize = 0;
+    appendW(&tb, &k, if (highlight) w.wstr("新纪录！") else w.wstr("最高分纪录"));
+    appendW(&tb, &k, if (m == .hyper) w.wstr(" · 双曲复数模式") else w.wstr(" · 复数模式"));
+    tb[k] = 0;
+    _ = w.MessageBoxW(hwnd_main, @ptrCast(&buf), @ptrCast(&tb), w.MB.OK | w.MB.ICONINFORMATION);
 }
 
 // ------------------------------------------------------------------ 主窗口
@@ -1116,7 +1130,7 @@ fn afterGameAction(hwnd: w.HWND) void {
     if (best_scores[u] != 0 and sec >= best_scores[u]) return; // 没破纪录
     best_scores[u] = sec;
     saveScores();
-    if (!scores_quiet) showBestScores(true);
+    if (!scores_quiet) showBestScores(true, game.mode);
 }
 fn mainWndProc(hwnd: w.HWND, msg: w.UINT, wp: w.WPARAM, lp: w.LPARAM) callconv(.c) w.LRESULT {
     switch (msg) {
@@ -1376,7 +1390,8 @@ fn handleCommand(hwnd: w.HWND, id: usize) void {
         IDM_HYPER_CUSTOM => {
             if (runCustomDialog()) applyCustomFromDialog();
         },
-        IDM_BEST => showBestScores(false),
+        IDM_BEST => showBestScores(false, .complex),
+        IDM_HYPER_BEST => showBestScores(false, .hyper),
         IDM_EXIT => _ = w.DestroyWindow(hwnd),
         IDM_ZOOM1, IDM_ZOOM2, IDM_ZOOM3 => {
             zoom = switch (id) {
@@ -1458,6 +1473,8 @@ fn buildMenu() w.HMENU {
     _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_INTERMEDIATE, w.wstr("中级(&I)\t16×16 · 40 雷"));
     _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_EXPERT, w.wstr("高级(&E)\t30×16 · 99 雷"));
     _ = w.AppendMenuW(cplx_menu, w.MF.SEPARATOR, 0, null);
+    // 纪录放进各自的模式里：两个模式各记一套，从哪个模式的菜单点进去就看哪一套
+    _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_BEST, w.wstr("最高分纪录(&R)…"));
     _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_CUSTOM, w.wstr("自定义雷区(&C)…"));
     _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(cplx_menu), w.wstr("复数模式(&C)"));
 
@@ -1466,11 +1483,10 @@ fn buildMenu() w.HMENU {
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_INTERMEDIATE, w.wstr("中级(&I)\t16×16 · 40 雷"));
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_EXPERT, w.wstr("高级(&E)\t30×16 · 99 雷"));
     _ = w.AppendMenuW(hyper_menu, w.MF.SEPARATOR, 0, null);
+    _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_BEST, w.wstr("最高分纪录(&R)…"));
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_CUSTOM, w.wstr("自定义雷区(&C)…"));
     _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(hyper_menu), w.wstr("双曲复数模式(&H)"));
 
-    _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
-    _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_BEST, w.wstr("最高分纪录(&R)…"));
     _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_ZOOM1, w.wstr("缩放 100%"));
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_ZOOM2, w.wstr("缩放 200%"));
@@ -2215,6 +2231,7 @@ pub const test_IDM_HYPER_BEGINNER = IDM_HYPER_BEGINNER;
 pub const test_IDM_HYPER_INTERMEDIATE = IDM_HYPER_INTERMEDIATE;
 pub const test_IDM_HYPER_EXPERT = IDM_HYPER_EXPERT;
 pub const test_IDM_HYPER_CUSTOM = IDM_HYPER_CUSTOM;
+pub const test_IDM_HYPER_BEST = IDM_HYPER_BEST;
 pub const test_IDM_CUSTOM = IDM_CUSTOM;
 
 /// 当前是不是双曲复数模式
@@ -2563,7 +2580,7 @@ pub fn testGetScore(i: usize) i32 {
 var scores_text_buf: [512]u16 = undefined;
 /// 把「最高分纪录」对话框的正文取出来给自检核对（UTF-16 码元，不含结尾 0）
 pub fn testScoresText() []const u16 {
-    const n = buildScoresText(&scores_text_buf);
+    const n = buildScoresText(&scores_text_buf, best_scores);
     return scores_text_buf[0..n];
 }
 /// 把开局时刻往前挪 ms 毫秒，用来在自检里模拟"用了多久"

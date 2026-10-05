@@ -124,10 +124,9 @@ for (const g of groups) {
 const NEW_H = y;
 
 /* ---------- 画新画布 ---------- */
-const big = Buffer.alloc(W * NEW_H * 4);
-for (let i = 0; i < W * NEW_H; i++) {
-  big[i * 4] = 192; big[i * 4 + 1] = 192; big[i * 4 + 2] = 192; big[i * 4 + 3] = 255;
-}
+// 空白处保持全透明（作者现在就是这么画的：图集只留贴图，底子透明，看着干净）。
+// 槽位里的透明像素由 gen_atlas.js 按底色补实，游戏走 GDI 不看 alpha。
+const big = Buffer.alloc(W * NEW_H * 4);   // 全 0 = 全透明
 for (const s of meta.slots) {
   const to = spot.get(s.name);
   if (!to) throw new Error('有槽位没排到：' + s.name);

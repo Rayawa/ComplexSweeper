@@ -152,19 +152,39 @@ const pix = Buffer.alloc(W * H * 4);      // 0 = 透明黑
 // 整块数字就变成一片噪点、像被压扁了。这里把虚段的暗红像素抹成黑，只留点亮的段，
 // 放大后就是干净的经典 LED。想保留虚段效果把这一行改成 false。
 const CLEAN_LED_GHOST_SEGMENTS = false;
+// 游戏贴图走 GDI（BitBlt），**不看 alpha**，槽位里透明的地方就按它自己的 RGB 画出来
+// （编辑器擦掉一个像素通常留下 0,0,0,0 → 屏幕上就是一颗黑点）。所以除图标外，
+// 槽位内凡是 alpha < 255 的像素一律按底色 #C0C0C0 补实；图集空白处保持透明不影响游戏，
+// 作者只保证"槽位矩形里的画是完整的"就够了。
+let healed = 0;
+const healedSlots = new Map();
 for (const p of placed){
   const is_led = CLEAN_LED_GHOST_SEGMENTS && p.name.startsWith('led_');
   for (let ry = 0; ry < p.h; ry++){
     for (let rx = 0; rx < p.w; rx++){
       const s = (ry * p.w + rx) * 4, d = ((p.y + ry) * W + (p.x + rx)) * 4;
       let r = p.im.rgba[s], g = p.im.rgba[s + 1], b = p.im.rgba[s + 2];
+      let a = p.im.rgba[s + 3];
       if (is_led && r > 40 && r < 200 && g < 40 && b < 40){ r = 0; g = 0; b = 0; }
+      if (p.name !== 'icon' && a < 255){
+        const t = a / 255;
+        r = Math.round(r * t + 192 * (1 - t));
+        g = Math.round(g * t + 192 * (1 - t));
+        b = Math.round(b * t + 192 * (1 - t));
+        a = 255;
+        healed += 1;
+        healedSlots.set(p.name, (healedSlots.get(p.name) || 0) + 1);
+      }
       pix[d]     = b;                     // B
       pix[d + 1] = g;                     // G
       pix[d + 2] = r;                     // R
-      pix[d + 3] = p.im.rgba[s + 3];      // A
+      pix[d + 3] = a;                     // A
     }
   }
+}
+if (healed) {
+  const list = [...healedSlots].map(([n, c]) => n + '×' + c).join(' ');
+  console.log(`槽位里的透明像素按底色补实了 ${healed} 个：${list}（GDI 不看 alpha，不补会画成黑点）`);
 }
 
 /* ---------------- 写出 atlas.bin ---------------- */

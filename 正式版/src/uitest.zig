@@ -126,9 +126,10 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, std.mem.indexOf(u8, about, "Complexweeper") != null, "「关于」里应有英文名 Complexweeper");
         var hb: [1024]u8 = undefined;
         const help = u16ToUtf8(&hb, std.mem.span(ui.testHelpText));
-        expect(out, std.mem.indexOf(u8, help, "旗帜顺序为正实旗、负实旗、正虚旗、负虚旗") != null, "玩法里的旗帜顺序应是正实旗、负实旗、正虚旗、负虚旗");
-        expect(out, std.mem.indexOf(u8, help, "旗帜顺序为正实雷") == null, "旗帜顺序不该再写成雷的名字");
         expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "四种雷仍按雷的名字列（正实雷…）");
+        expect(out, std.mem.indexOf(u8, help, "正双曲雷、负双曲雷") != null, "双曲模式那段应写正双曲雷、负双曲雷");
+        expect(out, std.mem.indexOf(u8, help, "鼠标左键翻开格子，右键插旗") != null, "操作说明应在正文里");
+        expect(out, std.mem.indexOf(u8, help, "点击人脸或者按F2 开局") != null, "开局方式应在正文里");
         expect(out, std.mem.indexOf(u8, help, "+1") == null and std.mem.indexOf(u8, help, "-1") == null, "玩法里不该出现 +1/−1 那套符号");
         out.writer().print("0b 版本号：[{s}] · 关于程序名：[复扫雷 Complexweeper]\n", .{v}) catch {};
     }
@@ -961,14 +962,14 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         {
             var hb: [3072]u8 = undefined;
             const help = u16ToUtf8(&hb, std.mem.span(ui.testHelpText));
-            expect(out, std.mem.indexOf(u8, help, "【复数模式】") != null, "玩法里应有「【复数模式】」这一段");
-            expect(out, std.mem.indexOf(u8, help, "【双曲复数模式】") != null, "玩法里应有「【双曲复数模式】」这一段");
+            expect(out, std.mem.indexOf(u8, help, "复数模式：") != null, "玩法里应有「复数模式：」这一段");
+            expect(out, std.mem.indexOf(u8, help, "双曲复数模式：") != null, "玩法里应有「双曲复数模式：」这一段");
             expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "复数模式那段的四种雷应按雷的名字列");
             expect(out, std.mem.indexOf(u8, help, "正双曲雷、负双曲雷") != null, "双曲模式那段应写正双曲雷、负双曲雷");
             expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "复数模式的判据要写清楚");
-            expect(out, std.mem.indexOf(u8, help, "实部与 j 部的绝对值分别与真实相符") != null, "双曲模式的判据要写清楚");
-            expect(out, std.mem.indexOf(u8, help, "实部平方 − j 部平方") != null, "双曲模式要说清被开方数怎么算");
-            expect(out, std.mem.indexOf(u8, help, "旗帜顺序为正实旗、负实旗、正双曲旗、负双曲旗") != null, "双曲模式的旗帜顺序应是双曲旗");
+            expect(out, std.mem.indexOf(u8, help, "实、j部的数量等于真实数量") != null, "双曲模式的判据要写清楚");
+            expect(out, std.mem.indexOf(u8, help, "形式模长S=√(a²-b²)") != null, "双曲模式要说清形式模长怎么算");
+            expect(out, std.mem.indexOf(u8, help, "双曲虚数单位j²=1") != null, "双曲模式要写明单位 j²=1");
             out.writer().print("14d 玩法与操作：一篇文案含两个模式的规则 通过\n", .{}) catch {};
         }
 // 14e 纪录分模式 + 双曲局照样记账

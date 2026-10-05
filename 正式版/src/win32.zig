@@ -239,6 +239,15 @@ pub extern "user32" fn ReleaseDC(HWND, HDC) callconv(.c) i32;
 pub extern "user32" fn SetCapture(HWND) callconv(.c) HWND;
 pub extern "user32" fn ReleaseCapture() callconv(.c) BOOL;
 pub extern "user32" fn GetCapture() callconv(.c) HWND;
+
+// ---------------------------------------------------------------- 音效（winmm）
+// 只用到 PlaySound 这一个入口：wav 已经被编进 exe（和贴图一样），用 SND_MEMORY 直接喂内存。
+// 第一个参数在 SND_MEMORY 时是"指向 wav 镜像的指针"，这里用 ?*const anyopaque 接：
+// 写成 LPCWSTR（以 0 结尾的 u16 串）会要求 2 字节对齐，还会顺着内存往后找结束符。
+pub const SND_ASYNC: DWORD = 0x0001; // 立刻返回，不阻塞消息循环
+pub const SND_NODEFAULT: DWORD = 0x0002; // 出错就静默，别放系统默认提示音
+pub const SND_MEMORY: DWORD = 0x0004; // 第一个参数指向内存里的 wav
+pub extern "winmm" fn PlaySoundW(?*const anyopaque, ?*anyopaque, DWORD) callconv(.c) BOOL;
 pub extern "user32" fn LoadCursorW(HINSTANCE, LPCWSTR) callconv(.c) HCURSOR;
 pub extern "user32" fn LoadIconW(HINSTANCE, ?*const anyopaque) callconv(.c) HICON;
 /// 按指定尺寸取图标资源（图标资源里放了 16/32/48 三档，这里点名要哪一档）

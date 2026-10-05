@@ -833,6 +833,99 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         out.writer().print("12.5 纪录窗正文：\n{s}", .{s}) catch {};
     }
 
+    // 13) 音效：六段都编在 exe 里；踩雷按那一格的雷型播、通关播 win、
+    //     计时从第 1 秒起每整秒一下 tick（消息级自检出不了声，这里验的是"什么时候该播哪一段"）
+    {
+        // 13a 内嵌素材：六段都在、都是标准 wav、四种踩雷音各不相同
+        var all_riff = true;
+        var all_big = true;
+        for (0..6) |i| {
+            if (!ui.testSoundIsRiff(i)) all_riff = false;
+            if (ui.testSoundBytes(i) < 1000) all_big = false;
+        }
+        expect(out, all_riff, "六段音效都应是标准 wav（RIFF/WAVE 头）");
+        expect(out, all_big, "六段音效都不该是空壳");
+        // 自检跑在非交互模式下（带了 --uitest），所以必须是静音的：逻辑照跑、计数照记，不真放音
+        expect(out, ui.testArgCount() > 0, "自检进程应当带着开关启动");
+        expect(out, ui.testSoundMuted(), "非交互模式（自检/抓图/导出）应当静音");
+        expect(out,
+            !ui.testSoundsEqual(0, 1) and !ui.testSoundsEqual(0, 2) and !ui.testSoundsEqual(0, 3) and
+            !ui.testSoundsEqual(1, 2) and !ui.testSoundsEqual(1, 3) and !ui.testSoundsEqual(2, 3),
+            "四种踩雷音必须各不相同（不能四种雷一个声）");
+
+        // 13b 计时：第 0 秒不响，从第 1 秒起每整秒一下，同秒不重复，一次跳好几秒也只补一下
+        ui.testSoundReset();
+        ui.testCommand(ui.test_IDM_BEGINNER);
+        const Ls = ui.testLayout();
+        const sx0 = Ls.board_x + 4 * Ls.cell + @divTrunc(Ls.cell, 2);
+        const sy0 = Ls.board_y + 4 * Ls.cell + @divTrunc(Ls.cell, 2);
+        ui.testMouse(w.WM.LBUTTONDOWN, sx0, sy0);
+        ui.testMouse(w.WM.LBUTTONUP, sx0, sy0);
+        expect(out, ui.game_ptr.started, "先开一局才谈得上计时的声音");
+        ui.testBackdate(0);
+        ui.testTimerTick();
+        expect(out, ui.testSoundCount(5) == 0, "刚开局（第 0 秒）不该播 tick");
+        ui.testBackdate(1_200);
+        ui.testTimerTick();
+        expect(out, ui.testSoundCount(5) == 1, "走到第 1 秒应播一次 tick");
+        ui.testTimerTick();
+        expect(out, ui.testSoundCount(5) == 1, "同一秒里再触发不该重复播");
+        ui.testBackdate(2_500);
+        ui.testTimerTick();
+        expect(out, ui.testSoundCount(5) == 2, "第 2 秒应再来一次");
+        ui.testBackdate(9_800);
+        ui.testTimerTick();
+        expect(out, ui.testSoundCount(5) == 3, "一次跳过好几秒也只补一下，不该连着炸一串");
+        expect(out, ui.testSoundCount(4) == 0, "还没通关，不该播胜利音");
+
+        // 13c 踩雷：四种雷各踩一次，必须播各自那一段
+        var t: u8 = 1;
+        while (t <= 4) : (t += 1) {
+            ui.testSoundReset();
+            ui.testCommand(ui.test_IDM_EXPERT);
+            const Le = ui.testLayout();
+            const px = Le.board_x + @divTrunc(Le.cell, 2);
+            const py = Le.board_y + @divTrunc(Le.cell, 2);
+            ui.testMouse(w.WM.LBUTTONDOWN, px, py);
+            ui.testMouse(w.WM.LBUTTONUP, px, py);
+            ui.testFaceFlashExpire();
+            expect(out, ui.game_ptr.started and !ui.game_ptr.over, "高级盘第一下必是安全开局");
+            var snd_cell: i32 = -1;
+            for (0..ui.game_ptr.n) |k| {
+                if (ui.game_ptr.mine[k] == t) {
+                    snd_cell = @intCast(k);
+                    break;
+                }
+            }
+            expect(out, snd_cell >= 0, "高级盘（99 雷）四种雷都该有");
+            ui.testSoundReset();
+            const p = cellXY(Le, @intCast(snd_cell));
+            ui.testMouse(w.WM.LBUTTONDOWN, p[0], p[1]);
+            ui.testMouse(w.WM.LBUTTONUP, p[0], p[1]);
+            expect(out, ui.game_ptr.over and !ui.game_ptr.win, "点雷应判负");
+            expect(out, ui.testSoundCount(@as(usize, t) - 1) == 1, "踩中该类雷应播对应那一段踩雷音");
+            var others: u32 = 0;
+            for (0..6) |i| {
+                if (i != @as(usize, t) - 1) others += ui.testSoundCount(i);
+            }
+            expect(out, others == 0, "踩雷时不该同时播别的声音");
+        }
+
+        // 13d 通关：只播胜利音
+        ui.testSoundReset();
+        ui.testCommand(ui.test_IDM_BEGINNER);
+        const Lw = ui.testLayout();
+        const wx = Lw.board_x + 4 * Lw.cell + @divTrunc(Lw.cell, 2);
+        const wy = Lw.board_y + 4 * Lw.cell + @divTrunc(Lw.cell, 2);
+        clearBoard(out, wx, wy, 3_000);
+        expect(out, ui.game_ptr.win, "应通关");
+        expect(out, ui.testSoundCount(4) == 1, "通关应播一次胜利音");
+        var mine_played: u32 = 0;
+        for (0..4) |i| mine_played += ui.testSoundCount(i);
+        expect(out, mine_played == 0, "通关不该播踩雷音");
+        out.writer().print("13 音效：六段内嵌 / tick 每整秒一下 / 四种踩雷按型 / 通关胜利音 通过\n", .{}) catch {};
+    }
+
     out.writer().print("\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails }) catch {};
     out.writer().print("{s}\n", .{if (fails == 0) "全部通过" else "存在失败"}) catch {};
     return fails;

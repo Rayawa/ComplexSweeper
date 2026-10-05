@@ -4,6 +4,7 @@ const std = @import("std");
 const w = @import("win32.zig");
 const g = @import("game.zig");
 const A = @import("assets.zig");
+const snd = @import("sounds.zig");
 
 // ------------------------------------------------------------------ 常量
 const CLASS_MAIN = "ComplexSweeperMain";
@@ -370,6 +371,44 @@ fn doExpand(hwnd: w.HWND, c: usize) void {
     _ = w.InvalidateRect(hwnd, null, 0);
 }
 
+// ------------------------------------------------------------------ 音效
+// 六段音效全都编在 exe 里（sounds.bin，见 tools/gen_sounds.js），运行时用
+// PlaySound(SND_MEMORY | SND_ASYNC) 播：不阻塞消息循环，也不读磁盘。
+// 三种时机：踩雷按那一格的雷型播、通关播 win、计时从 1 秒起每整秒一下 tick。
+/// 每个槽位播过几次（自检用；ReleaseSmall 下没人读也不会有人写，代价可以忽略）
+var sound_log: [snd.count]u32 = [_]u32{0} ** snd.count;
+/// 一盘只播一次结束音（踩雷/通关），重开时复位
+var over_sound_done: bool = false;
+/// 上一次播 tick 的秒数（-1 = 还没播过）
+var tick_second: i32 = -1;
+/// 命令行里除了 exe 路径之外的参数个数（0 = 用户双击运行 → 要出声）
+var arg_count: usize = 0;
+/// 静音开关：自检/抓图/导出这些非交互模式一律静音（逻辑照跑、计数照记，只是不真的放音）
+var sound_muted: bool = false;
+
+/// 用户是不是"双击运行"（没带任何开关）
+fn interactive() bool {
+    return arg_count == 0;
+}
+
+fn playSound(s: snd.Sounds) void {
+    const i = @intFromEnum(s);
+    sound_log[i] +%= 1;
+    if (sound_muted) return;
+    const bytes = snd.wav(i);
+    _ = w.PlaySoundW(@ptrCast(bytes.ptr), null, w.SND_MEMORY | w.SND_ASYNC | w.SND_NODEFAULT);
+}
+
+/// 计时走到 1 秒之后，每过一整秒播一下 tick。没开局、已结束、或者还在同一秒里都不播——
+/// 消息循环被卡住导致一次跳过好几秒时也只补一下，不会连着炸一串。
+fn maybePlayTick() void {
+    if (!game.started or game.over) return;
+    const sec = timerSeconds();
+    if (sec < 1 or sec == tick_second) return;
+    tick_second = sec;
+    playSound(.tick);
+}
+
 /// 触发一次「脸扫雷」闪动（翻格/插旗时调用）
 fn flashFace(hwnd: w.HWND) void {
     face_flash_until = nowMs() +% FACE_FLASH_MS;
@@ -573,7 +612,7 @@ fn repaint(hwnd: w.HWND) void {
 /// 窗口标题固定不变（难度、局面信息都不往标题里塞）
 const APP_TITLE = "复扫雷 Complexweeper";
 /// 版本号：**只有这一处**。以后每次改动都顺手把它 +1，关于对话框与两个自检报告的抬头都读它。
-const APP_VERSION = "1.0.12";
+const APP_VERSION = "1.0.13";
 
 // ------------------------------------------------------------------ 棋盘交互
 fn cellAt(L: Layout, px: i32, py: i32) i32 {
@@ -605,6 +644,9 @@ fn startNewGame(seed_override: ?u32) void {
     face_down = false;
     face_armed = false;
     face_flash_until = 0;
+    // 音效也要复位：结束音重新允许播，计时的"上一个整秒"清掉
+    over_sound_done = false;
+    tick_second = -1;
     _ = w.KillTimer(hwnd_main, TIMER_FLASH);
     _ = w.InvalidateRect(hwnd_main, null, 0);
 }
@@ -1012,9 +1054,20 @@ fn showBestScores(highlight: bool) void {
 }
 
 // ------------------------------------------------------------------ 主窗口
-/// 一盘结束后统一处理：停表、冻结用时，胜利且进标准三档时结算纪录
+/// 一盘结束后统一处理：结束音效、停表、冻结用时，胜利且进标准三档时结算纪录
 fn afterGameAction(hwnd: w.HWND) void {
     if (!game.over) return;
+    // 结束音只播一次：这里被翻格/展开等多条路径调用，靠 over_sound_done 兜住
+    if (!over_sound_done) {
+        over_sound_done = true;
+        if (game.win) {
+            playSound(.win);
+        } else {
+            // 踩中的是哪一格 → 按那一格的雷型选音（1..4 与 Game.mine 的编号一致）
+            const t: u8 = if (game.boom >= 0) game.mine[@intCast(game.boom)] else 1;
+            playSound(snd.Sounds.mineOf(t));
+        }
+    }
     _ = w.KillTimer(hwnd, TIMER_ID);
     if (game.t0 != 0) game.elapsed_ms = nowMs() -% game.t0;
     if (!game.win) return;
@@ -1062,6 +1115,7 @@ fn mainWndProc(hwnd: w.HWND, msg: w.UINT, wp: w.WPARAM, lp: w.LPARAM) callconv(.
             }
             if (game.started and !game.over) {
                 game.elapsed_ms = w.GetTickCount() -% game.t0;
+                maybePlayTick();
             }
             _ = w.InvalidateRect(hwnd, null, 0);
             return 0;
@@ -1518,8 +1572,15 @@ fn parseArgs() void {
     var it = std.process.argsWithAllocator(std.heap.page_allocator) catch return;
     defer it.deinit();
     var expect: enum { none, shot, selftest, dump, uitest } = .none;
+    var first = true;
     _ = &window_shot;
     while (it.next()) |arg| {
+        // 第一个参数是 exe 自己的路径，不算开关
+        if (first) {
+            first = false;
+            continue;
+        }
+        arg_count += 1;
         switch (expect) {
             .shot => {
                 shot_path_len = copyPath(&shot_path_buf, arg);
@@ -1643,6 +1704,9 @@ fn setupDemo() void {
 
 pub fn main() void {
     parseArgs();
+    // 非交互模式（自检、抓图、导出）一律静音：逻辑照跑、计数照记，但别在跑测试时真的炸四声。
+    // 真人双击运行时 game_mode 才为 true。
+    sound_muted = !interactive();
     if (selftestPath()) |p| {
         const code = runSelftest(p);
         w.ExitProcess(@intCast(code));
@@ -2018,6 +2082,51 @@ pub fn testCounterImag(t: usize) bool {
 /// 计雷器那一列的整体宽度（版式自检拿它核对没有溢进人脸/表头外）
 pub fn testCountersWidth() i32 {
     return countersWidth(layout());
+}
+// ---- 音效的测试钩子（消息级自检里出不了声，验的是"什么时候该播哪一段"）----
+/// 某个槽位播过几次；下标 0..3 = 四种踩雷（与 Game.mine 的 1..4 对应），4 = win，5 = tick
+pub fn testSoundCount(i: usize) u32 {
+    if (i >= snd.count) return 0;
+    return sound_log[i];
+}
+/// 第 i 段内嵌音效的字节数（确认真的编进去了、不是空壳）
+pub fn testSoundBytes(i: usize) usize {
+    return snd.wav(i).len;
+}
+/// 第 i 段开头是不是标准 wav 头（RIFF / WAVE）
+pub fn testSoundIsRiff(i: usize) bool {
+    const b = snd.wav(i);
+    return b.len >= 44 and std.mem.eql(u8, b[0..4], "RIFF") and std.mem.eql(u8, b[8..12], "WAVE");
+}
+/// 两段音效的字节是否完全一样（用来确认四种踩雷音确实各不相同）
+pub fn testSoundsEqual(i: usize, j: usize) bool {
+    const a = snd.wav(i);
+    const b = snd.wav(j);
+    if (a.len != b.len) return false;
+    return std.mem.eql(u8, a, b);
+}
+/// 音效计数清零（自检里按组隔离，免得上一组的声音串到下一组）
+pub fn testSoundReset() void {
+    sound_log = [_]u32{0} ** snd.count;
+    over_sound_done = false;
+    tick_second = -1;
+}
+/// 手动走一次"计时器到点"的处理：消息级自检没有真消息循环，靠这个驱动每秒一下的 tick。
+/// 它和 WM_TIMER 里做的是同一件事——先从时钟刷新 elapsed_ms，再判该不该响；
+/// 少了刷新的那一步，`testBackdate` 挪过的时间就看不见（秒数一直是 0，tick 永远不播）。
+pub fn testTimerTick() void {
+    if (game.started and !game.over) {
+        game.elapsed_ms = w.GetTickCount() -% game.t0;
+    }
+    maybePlayTick();
+}
+/// 当前是不是静音状态（自检跑在非交互模式下，应当是true；真人双击运行时为 false）
+pub fn testSoundMuted() bool {
+    return sound_muted;
+}
+/// 命令行里带了几个开关（自检自己就带了 --uitest，所以这里必然 > 0）
+pub fn testArgCount() usize {
+    return arg_count;
 }
 pub fn testMouse(msg: w.UINT, x: i32, y: i32) void {
     _ = mainWndProc(hwnd_main, msg, 0, w.makeLParam(x, y));

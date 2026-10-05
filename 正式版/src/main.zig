@@ -1,4 +1,4 @@
-﻿// 复扫雷 正式版 · 主程序
+// 复扫雷 正式版 · 主程序
 // 纯 Win32 + GDI，无第三方库、无 libc、无运行时依赖，编译结果为单个 exe。
 const std = @import("std");
 const w = @import("win32.zig");
@@ -935,7 +935,11 @@ fn createCustomWindow() bool {
     _ = label(dialog_hwnd, hinst, 156, y + 3, 150, 18, font, w.wstr("9 – 40 列"));
     y += 34;
 
-    const names = [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正虚雷："), w.wstr("负虚雷：") };
+    // 四种雷的名字随模式：双曲模式下 3/4 是双曲雷，不叫虚雷
+    const names = if (hyper())
+        [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正双曲雷："), w.wstr("负双曲雷：") }
+    else
+        [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正虚雷："), w.wstr("负虚雷：") };
     var k: usize = 0;
     while (k < 4) : (k += 1) {
         const col: i32 = if (k % 2 == 0) 0 else 160;

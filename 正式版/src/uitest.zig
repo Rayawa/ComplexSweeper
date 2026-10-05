@@ -986,6 +986,26 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         }
     }
 
+// 14f 自定义雷区的雷名随模式：双曲模式下 3/4 写「正双曲雷 / 负双曲雷」
+    {
+        ui.testCommand(ui.test_IDM_HYPER_BEGINNER);
+        expect(out, ui.testOpenDialog(), "双曲模式下自定义对话框应能打开");
+        var lb: [1024]u8 = undefined;
+        const labels = u16ToUtf8(&lb, ui.testDialogTexts());
+        expect(out, std.mem.indexOf(u8, labels, "正双曲雷") != null, "双曲模式下对话框应写「正双曲雷」");
+        expect(out, std.mem.indexOf(u8, labels, "负双曲雷") != null, "双曲模式下对话框应写「负双曲雷」");
+        expect(out, std.mem.indexOf(u8, labels, "正虚雷") == null, "双曲模式下不该再写「正虚雷」");
+        ui.testCloseDialog();
+        ui.testCommand(ui.test_IDM_BEGINNER);   // 回到复数模式，别影响后面的组
+        expect(out, ui.testOpenDialog(), "复数模式下自定义对话框也应能打开");
+        var lb2: [1024]u8 = undefined;
+        const labels2 = u16ToUtf8(&lb2, ui.testDialogTexts());
+        expect(out, std.mem.indexOf(u8, labels2, "正虚雷") != null, "复数模式下仍写「正虚雷」");
+        expect(out, std.mem.indexOf(u8, labels2, "正双曲雷") == null, "复数模式下不该写「正双曲雷」");
+        ui.testCloseDialog();
+        out.writer().print("14f 自定义雷区：雷名随模式（虚雷 / 双曲雷）通过\n", .{}) catch {};
+    }
+
 // 15) 失败/胜利后的判定贴图：标错雷 / 标错空格子 / 标对雷 / 标对旗 / 标错旗
     {
         const gm = ui.game_ptr;

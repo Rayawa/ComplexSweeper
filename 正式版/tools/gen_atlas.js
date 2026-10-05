@@ -128,6 +128,24 @@ const reuseCount = [...hyperSprite.values()].filter((n) => n.startsWith('num_'))
 console.log(`素材来源：整图（图集.png + 图集.json，${placed.length} 个槽位，${W}×${H}）`);
 console.log(`双曲模式 39 个显示值：自带贴图 ${hyperSprite.size - reuseCount} 张 + 复用复数模式 ${reuseCount} 张`);
 
+// 占位图提醒：新增区的占位素材字色是紫红 160,0,160（见 文档/双曲复数模式.md）。真素材里不会出现它，
+// 所以哪一格还带着这个颜色，就是"还没画"。这里只提醒、不拦构建。
+const PLACEHOLDER = [160, 0, 160];
+const pending = [];
+for (const [name, im] of placed.map((p) => [p.name, p.im])) {
+  if (!/^hnum_|^led_j$/.test(name)) continue;
+  for (let i = 0; i < im.rgba.length; i += 4) {
+    if (im.rgba[i] === PLACEHOLDER[0] && im.rgba[i + 1] === PLACEHOLDER[1] && im.rgba[i + 2] === PLACEHOLDER[2]) {
+      pending.push(name);
+      break;
+    }
+  }
+}
+console.log(pending.length
+  ? `还差 ${pending.length} 张是占位图（紫红 160,0,160）：${pending.join(' ')}\n` +
+    '（计雷器的 led_j 是照 led_i 改的红色 j，不带紫红，所以不在上面这份名单里，要单独看）'
+  : '双曲模式的新增贴图已经全是真素材了 ✓（led_j 也确认一下：它是红色 j，不带紫红）');
+
 const pix = Buffer.alloc(W * H * 4);      // 0 = 透明黑
 // 计时/计数的 LED 素材里，"未点亮的段"是用 128,0,0 与黑交替点阵画出来的（半色调虚段）。
 // 13×23 原尺寸下看着像淡淡的残影，但游戏里贴图要放大到 2×/3×，每个点变成 2×2/3×3 的方块，

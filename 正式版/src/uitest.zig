@@ -912,8 +912,9 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, ui.testPresetIndex() == 0, "当前档位应是初级");
         var tbh: [256]u8 = undefined;
         const htitle = u16ToUtf8(&tbh, ui.testWindowTitle());
+        expect(out, std.mem.eql(u16, ui.testWindowTitle(), std.mem.span(ui.testAppTitle)), "双曲模式下标题也该原样（不多挂模式说明）");
         expect(out, std.mem.indexOf(u8, htitle, "复扫雷 Complexweeper") != null, "标题里应保留程序名");
-        expect(out, std.mem.indexOf(u8, htitle, "双曲复数模式") != null, "标题里应标明双曲复数模式");
+        expect(out, std.mem.indexOf(u8, htitle, "双曲") == null, "标题里不该出现模式说明");
         expect(out, ui.testSubItemChecked(0, 3, 0), "双曲模式的初级应打上圆点");
         expect(out, !ui.testSubItemChecked(0, 3, 1), "双曲模式的中级不该有圆点");
         expect(out, !ui.testSubItemChecked(0, 2, 0), "复数模式的初级不该跟着亮");

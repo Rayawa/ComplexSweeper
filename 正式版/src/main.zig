@@ -1,4 +1,4 @@
-// 复扫雷 正式版 · 主程序
+﻿// 复扫雷 正式版 · 主程序
 // 纯 Win32 + GDI，无第三方库、无 libc、无运行时依赖，编译结果为单个 exe。
 const std = @import("std");
 const w = @import("win32.zig");
@@ -636,7 +636,7 @@ fn repaint(hwnd: w.HWND) void {
 /// 窗口标题固定不变（难度、局面信息都不往标题里塞）
 const APP_TITLE = "复扫雷 Complexweeper";
 /// 版本号：**只有这一处**。以后每次改动都顺手把它 +1，关于对话框与两个自检报告的抬头都读它。
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.1.1";
 
 // ------------------------------------------------------------------ 棋盘交互
 fn cellAt(L: Layout, px: i32, py: i32) i32 {
@@ -690,30 +690,14 @@ fn setPreset(idx: i32, m: g.Mode) void {
     startNewGame(null);
 }
 
-/// 模式或难度换了之后要跟着走的三样东西：窗口标题、菜单圆点、当前模式的那套纪录。
+/// 模式或难度换了之后要跟着走的：菜单圆点、当前模式的那套纪录。
 /// 换模式要重新读纪录（两个模式各记一套），所以这里顺手 loadScores。
+/// 标题栏不跟着模式变——两个模式共用同一个标题（当前模式看菜单里的圆点）。
 fn syncMode() void {
-    updateTitle();
     // 换模式要换一整套纪录（两个模式各记三档）。自检模式下整个不碰纪录表，
     // 否则会把自检自己注入的分数擦掉。
     if (scores_persist) loadScores();
     checkMenu();
-}
-
-/// 标题栏：复数模式就是原标题（老样子不变），双曲复数模式在后面挂一个模式名，
-/// 于是任务栏、窗口列表里两个模式的窗口一眼分得开。
-fn updateTitle() void {
-    if (hwnd_main == null) return;
-    if (!hyper()) {
-        _ = w.SetWindowTextW(hwnd_main, w.wstr(APP_TITLE));
-        return;
-    }
-    var buf: [128]u16 = undefined;
-    var n: usize = 0;
-    appendW(&buf, &n, w.wstr(APP_TITLE));
-    appendW(&buf, &n, w.wstr(" · 双曲复数模式"));
-    buf[n] = 0;
-    _ = w.SetWindowTextW(hwnd_main, @ptrCast(&buf));
 }
 
 fn resizeWindowForBoard() void {

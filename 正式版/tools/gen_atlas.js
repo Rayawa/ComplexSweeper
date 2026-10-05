@@ -110,12 +110,23 @@ placed = meta.slots.map((s, i) => {
 for (const D of ACHIEVABLE) if (!seen.has('num_' + D)) throw new Error('整图里缺少 D=' + D + ' 的贴图（num_' + D + '）');
 const numCount = [...seen].filter(n => /^num_\d+$/.test(n)).length;
 if (numCount !== ACHIEVABLE.length) throw new Error('整图里的数字贴图数量不对：' + numCount);
-// 双曲模式的 39 张（docs/双曲复数模式.md §2）：名字与值一一对应，多一张少一张都拦下来
-for (const v of HYPER_VALUES) if (!seen.has(v.name)) throw new Error('整图里缺少双曲模式 ' + v.D + '（' + v.text + '）的贴图（' + v.name + '）');
-const hnumCount = [...seen].filter(n => /^hnum_/.test(n)).length;
-if (hnumCount !== HYPER_VALUES.length) throw new Error('整图里的双曲数字贴图数量不对：' + hnumCount + '，应为 ' + HYPER_VALUES.length);
+// 双曲模式的显示值：显示文本与复数模式不同的那 27 个各有一张自己的贴图（hnum_*）；
+// 文本相同的 12 个（0 1 2 √5 2√2 3 4 5 4√2 6 7 8）直接复用复数模式的 num_<D>，
+// 图集里不为它们另留槽位——少一份重复素材，也就少一处要同步的地方。
+const hyperSprite = new Map();   // D -> 贴图槽位名
+for (const v of HYPER_VALUES) {
+  if (seen.has(v.name)) {
+    hyperSprite.set(v.D, v.name);
+  } else if (v.D >= 0 && ACHIEVABLE.includes(v.D)) {
+    hyperSprite.set(v.D, 'num_' + v.D);
+  } else {
+    throw new Error(`整图里缺少双曲模式 ${v.D}（${v.text}）的贴图（${v.name}），也没有可复用的 num_*`);
+  }
+}
 for (const n of ['led_i', 'led_j']) if (!seen.has(n)) throw new Error('整图里缺少计雷器单位贴图（' + n + '）');
+const reuseCount = [...hyperSprite.values()].filter((n) => n.startsWith('num_')).length;
 console.log(`素材来源：整图（图集.png + 图集.json，${placed.length} 个槽位，${W}×${H}）`);
+console.log(`双曲模式 39 个显示值：自带贴图 ${hyperSprite.size - reuseCount} 张 + 复用复数模式 ${reuseCount} 张`);
 
 const pix = Buffer.alloc(W * H * 4);      // 0 = 透明黑
 // 计时/计数的 LED 素材里，"未点亮的段"是用 128,0,0 与黑交替点阵画出来的（半色调虚段）。
@@ -183,10 +194,11 @@ lines.push('    break :blk t;');
 lines.push('};');
 lines.push('');
 lines.push('/// 显示值 D = a^2 - b^2（-64 … 64）-> 数字贴图（双曲复数模式）；');
-lines.push('/// 下标是 D + 64，表外为 0xFFFF（不该出现）。39 个值的来历见 tools/hyper_values.js。');
+lines.push('/// 下标是 D + 64，表外为 0xFFFF（不该出现）。39 个值的来历见 tools/hyper_values.js，');
+lines.push('/// 其中显示文本与复数模式相同的 12 个直接指向 num_<D>（不重复出图）。');
 lines.push('pub const hnum_by_D = blk: {');
 lines.push('    var t = [_]u16{0xFFFF} ** 129;');
-for (const v of HYPER_VALUES) lines.push('    t[' + (v.D + 64) + '] = ' + v.name + '; // ' + v.D + ' → ' + v.text);
+for (const v of HYPER_VALUES) lines.push('    t[' + (v.D + 64) + '] = ' + hyperSprite.get(v.D) + '; // ' + v.D + ' → ' + v.text);
 lines.push('    break :blk t;');
 lines.push('};');
 lines.push('');

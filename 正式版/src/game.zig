@@ -6,9 +6,13 @@ pub const MAX_H: usize = 30;
 pub const MAX_CELLS: usize = MAX_W * MAX_H;
 pub const MAX_MINES: usize = 999;
 
-/// 四种雷：(实部, 虚部)
+/// 四种雷：(实部, 虚部)。两个模式共用这四种雷，只换单位：
+///   复数模式   i² = −1：+1、−1、+i、−i，显示值 a² + b²（恒非负）
+///   双曲模式   j² = +1：+1、−1、+j、−j，显示值 a² − b²（可负，负的显示成"根式 + i 单位"）
 pub const TYPES = [4][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
-/// 24 个可能的显示值
+/// 玩法模式
+pub const Mode = enum(u8) { complex = 0, hyper = 1 };
+/// 24 个可能的显示值（复数模式）
 pub const ACHIEVABLE = [24]u16{ 0, 1, 2, 4, 5, 8, 9, 10, 13, 16, 17, 18, 20, 25, 26, 29, 32, 34, 36, 37, 40, 49, 50, 64 };
 
 pub const Preset = struct { w: u16, h: u16, mines: u16, label: []const u8 };
@@ -52,7 +56,13 @@ pub const Game = struct {
     w: u16 = 9,
     h: u16 = 9,
     n: usize = 81,
+/// 当前玩法模式（newGame 不动它：模式是设置，不是局面的一部分）
+    mode: Mode = .complex,
+/// 双曲模式的判据取"备选"（更宽）那一档：只要求 a²−b² 与旗数相同。
+/// 默认 false = 推荐判据（|a|、|b| 分别相符，即四种符号组合任选）。见 文档/双曲复数模式.md §3。
+    judge_loose: bool = false,
     mine: [MAX_CELLS]u8 = [_]u8{0} ** MAX_CELLS,
+/// 显示值：复数模式存 a²+b²（0…64），双曲模式存 a²−b²（−64…64）
     clue: [MAX_CELLS]i16 = [_]i16{-1} ** MAX_CELLS,
     open: [MAX_CELLS]u8 = [_]u8{0} ** MAX_CELLS,
     flag: [MAX_CELLS]u8 = [_]u8{0} ** MAX_CELLS,
@@ -247,8 +257,36 @@ pub const Game = struct {
                 a += t[0];
                 b += t[1];
             }
-            self.clue[i] = @intCast(a * a + b * b);
+            self.clue[i] = @intCast(if (self.mode == .hyper) a * a - b * b else a * a + b * b);
         }
+    }
+
+/// 邻域按类型统计出的 (a, b)：a = 正实 − 负实，b = 正单位雷 − 负单位雷。
+/// `use_flag` 为真时统计旗帜，否则统计真雷。b 在两个模式里算法一样，只是单位不同（i / j）。
+    pub fn sumsOf(self: *const Game, cell: usize, use_flag: bool) [2]i32 {
+        var a: i32 = 0;
+        var b: i32 = 0;
+        var buf: [8]usize = undefined;
+        const k = self.nbrs(cell, &buf);
+        for (buf[0..k]) |j| {
+            const t: u8 = if (use_flag) self.flag[j] else self.mine[j];
+            if (t == 0) continue;
+            const d = TYPES[t - 1];
+            a += d[0];
+            b += d[1];
+        }
+        return .{ a, b };
+    }
+
+/// 邻域里的旗帜数
+    pub fn nbrFlagCount(self: *const Game, cell: usize) usize {
+        var buf: [8]usize = undefined;
+        const k = self.nbrs(cell, &buf);
+        var n: usize = 0;
+        for (buf[0..k]) |j| {
+            if (self.flag[j] != 0) n += 1;
+        }
+        return n;
     }
 
     pub fn countTypes(self: *Game) void {
@@ -347,8 +385,20 @@ pub const Game = struct {
         self.checkWin();
     }
 
-/// 判据：旗帜数 = 邻域真实雷数，且实虚比例相符
+/// 判据：旗帜数 = 邻域真实雷数，且"显示值区分不出来的差别"允许存在。
+///   复数模式：显示值 a²+b² 看不出整体取负、也看不出实虚交换 → 允许实虚比例等于真值比例或其倒数。
+///   双曲模式：显示值 a²−b² 看不出 a、b 各自取负（交换会变号，藏不住）→ 要求 |a|、|b| 分别相符，
+///             也就是四种符号组合任选；judge_loose 时只要求 a²−b² 相同（备选判据，仅 D=0、±16 有别）。
     pub fn matchComboTruth(self: *const Game, cell: usize) bool {
+        if (self.nbrMineCount(cell) != self.nbrFlagCount(cell)) return false;
+        if (self.mode == .hyper) {
+            const t = self.sumsOf(cell, false);
+            const f = self.sumsOf(cell, true);
+            if (self.judge_loose) {
+                return t[0] * t[0] - t[1] * t[1] == f[0] * f[0] - f[1] * f[1];
+            }
+            return @abs(f[0]) == @abs(t[0]) and @abs(f[1]) == @abs(t[1]);
+        }
         var truth = [4]u16{ 0, 0, 0, 0 };
         var got = [4]u16{ 0, 0, 0, 0 };
         var buf: [8]usize = undefined;

@@ -161,6 +161,7 @@ pub const MF = struct {
     pub const ENABLED: UINT = 0x00000000;
     pub const POPUP: UINT = 0x00000010;
     pub const BYCOMMAND: UINT = 0x00000000;
+    pub const BYPOSITION: UINT = 0x00000400;
 };
 pub const IDC = struct {
     pub const ARROW: usize = 32512;
@@ -215,6 +216,7 @@ pub const MSGBOXPARAMS = extern struct {
 
 pub const IMAGE_ICON: UINT = 1;
 pub const LR_DEFAULTCOLOR: UINT = 0x00000000;
+
 
 // ---- user32 ----
 pub extern "user32" fn RegisterClassExW(*const WNDCLASSEXW) callconv(.c) ATOM;
@@ -279,6 +281,7 @@ pub extern "user32" fn GetMenu(HWND) callconv(.c) HMENU;
 pub extern "user32" fn GetSubMenu(HMENU, i32) callconv(.c) HMENU;
 pub extern "user32" fn GetMenuItemCount(HMENU) callconv(.c) i32;
 pub extern "user32" fn GetMenuItemID(HMENU, i32) callconv(.c) UINT;
+pub extern "user32" fn GetMenuState(HMENU, UINT, UINT) callconv(.c) UINT;
 /// 遍历子控件（自检收文案用）
 pub extern "user32" fn EnumChildWindows(HWND, ?*const fn (HWND, LPARAM) callconv(.c) BOOL, LPARAM) callconv(.c) BOOL;
 pub extern "user32" fn IsChild(HWND, HWND) callconv(.c) BOOL;
@@ -355,8 +358,11 @@ pub const C_BTNDKSHADOW = rgb(0x00, 0x00, 0x00);
 pub const C_BTNLIGHT = rgb(0xFF, 0xFF, 0xFF);
 
 /// 编译期 UTF-8 → UTF-16（只处理 BMP）
+/// 这里的循环是逐字节走的，编译器的默认分支配额（1000）不够长文案用
+/// （「玩法与操作」那份合并文案有七八百字节），所以显式把配额抬上去。
 pub fn wstr(comptime s: []const u8) *const [wlen(s):0]u16 {
     return comptime blk: {
+        @setEvalBranchQuota(200000);
         const N = wlen(s);
         var buf: [N:0]u16 = [_:0]u16{0} ** N;
         var i: usize = 0;

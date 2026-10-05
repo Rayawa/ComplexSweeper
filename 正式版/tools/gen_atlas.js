@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { VALUES: HYPER_VALUES } = require('./hyper_values.js');
 
 const root = path.resolve(__dirname, '..', '..');          // 项目根
 const assetDir = path.join(root, '素材');
@@ -109,6 +110,11 @@ placed = meta.slots.map((s, i) => {
 for (const D of ACHIEVABLE) if (!seen.has('num_' + D)) throw new Error('整图里缺少 D=' + D + ' 的贴图（num_' + D + '）');
 const numCount = [...seen].filter(n => /^num_\d+$/.test(n)).length;
 if (numCount !== ACHIEVABLE.length) throw new Error('整图里的数字贴图数量不对：' + numCount);
+// 双曲模式的 39 张（docs/双曲复数模式.md §2）：名字与值一一对应，多一张少一张都拦下来
+for (const v of HYPER_VALUES) if (!seen.has(v.name)) throw new Error('整图里缺少双曲模式 ' + v.D + '（' + v.text + '）的贴图（' + v.name + '）');
+const hnumCount = [...seen].filter(n => /^hnum_/.test(n)).length;
+if (hnumCount !== HYPER_VALUES.length) throw new Error('整图里的双曲数字贴图数量不对：' + hnumCount + '，应为 ' + HYPER_VALUES.length);
+for (const n of ['led_i', 'led_j']) if (!seen.has(n)) throw new Error('整图里缺少计雷器单位贴图（' + n + '）');
 console.log(`素材来源：整图（图集.png + 图集.json，${placed.length} 个槽位，${W}×${H}）`);
 
 const pix = Buffer.alloc(W * H * 4);      // 0 = 透明黑
@@ -169,10 +175,18 @@ lines.push('pub fn rect(i: u16) Rect { return rects[i]; }');
 lines.push('');
 for (const [name, i] of idx) lines.push('pub const ' + name + ': u16 = ' + i + ';');
 lines.push('');
-lines.push('/// 显示值 D = |S|^2 -> 数字贴图；表外为 0xFFFF（不该出现）');
+lines.push('/// 显示值 D = |S|^2 -> 数字贴图（复数模式）；表外为 0xFFFF（不该出现）');
 lines.push('pub const num_by_D = blk: {');
 lines.push('    var t = [_]u16{0xFFFF} ** 65;');
 for (const D of ACHIEVABLE) lines.push('    t[' + D + '] = num_' + D + ';');
+lines.push('    break :blk t;');
+lines.push('};');
+lines.push('');
+lines.push('/// 显示值 D = a^2 - b^2（-64 … 64）-> 数字贴图（双曲复数模式）；');
+lines.push('/// 下标是 D + 64，表外为 0xFFFF（不该出现）。39 个值的来历见 tools/hyper_values.js。');
+lines.push('pub const hnum_by_D = blk: {');
+lines.push('    var t = [_]u16{0xFFFF} ** 129;');
+for (const v of HYPER_VALUES) lines.push('    t[' + (v.D + 64) + '] = ' + v.name + '; // ' + v.D + ' → ' + v.text);
 lines.push('    break :blk t;');
 lines.push('};');
 lines.push('');

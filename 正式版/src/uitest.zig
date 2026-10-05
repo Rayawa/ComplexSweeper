@@ -887,6 +887,105 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         out.writer().print("13 音效：六段内嵌 / tick 每整秒一下 / 四种踩雷按型 / 通关胜利音 通过\n", .{}) catch {};
     }
 
+// 14) 双曲复数模式：菜单结构 / 圆点 / 标题 / j 单位 / 贴图分派 / 帮助窗口两个选项卡
+    {
+// 14a 菜单结构：游戏菜单 = 开局、分隔线、复数模式▸、双曲复数模式▸、分隔线、纪录、分隔线、三个缩放、分隔线、退出
+        expect(out, ui.testPopupItemId(0, 0) == @as(i32, @intCast(ui.test_IDM_NEW)), "游戏菜单第一项应是开局");
+        expect(out, ui.testPopupItemId(0, 1) == 0, "游戏菜单第二项应是分隔线（ID 0）");
+        expect(out, ui.testPopupCount(0) == 12, "游戏菜单应是 12 项（开局/分隔线/两个模式/分隔线/纪录/分隔线/三个缩放/分隔线/退出）");
+        expect(out, ui.testSubItemId(0, 2, 0) == @as(i32, @intCast(ui.test_IDM_BEGINNER)), "复数模式子菜单第一项应是初级");
+        expect(out, ui.testSubItemId(0, 2, 2) == @as(i32, @intCast(ui.test_IDM_EXPERT)), "复数模式子菜单第三项应是高级");
+        expect(out, ui.testSubItemId(0, 2, 3) == 0, "复数模式子菜单第四项应是分隔线（ID 0）");
+        expect(out, ui.testSubItemId(0, 2, 4) == @as(i32, @intCast(ui.test_IDM_CUSTOM)), "复数模式子菜单最后一项应是自定义雷区");
+        expect(out, ui.testSubItemId(0, 3, 0) == @as(i32, @intCast(ui.test_IDM_HYPER_BEGINNER)), "双曲复数模式子菜单第一项应是初级");
+        expect(out, ui.testSubItemId(0, 3, 2) == @as(i32, @intCast(ui.test_IDM_HYPER_EXPERT)), "双曲复数模式子菜单第三项应是高级");
+        expect(out, ui.testSubItemId(0, 3, 4) == @as(i32, @intCast(ui.test_IDM_HYPER_CUSTOM)), "双曲复数模式子菜单最后一项应是自定义雷区");
+        expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEGINNER), "菜单树里应能找到双曲初级");
+        expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_CUSTOM), "菜单树里应能找到双曲自定义");
+
+// 14b 切到双曲复数模式初级：模式、棋盘、档位、标题、圆点、j 单位格
+        ui.testCommand(ui.test_IDM_HYPER_BEGINNER);
+        expect(out, ui.testIsHyper(), "应切到双曲复数模式");
+        expect(out, ui.game_ptr.mode == .hyper, "游戏状态里的模式也该跟着切");
+        expect(out, ui.game_ptr.w == 9 and ui.game_ptr.h == 9 and ui.game_ptr.mines == 10, "双曲初级也应是 9×9/10");
+        expect(out, ui.testPresetIndex() == 0, "当前档位应是初级");
+        var tbh: [256]u8 = undefined;
+        const htitle = u16ToUtf8(&tbh, ui.testWindowTitle());
+        expect(out, std.mem.indexOf(u8, htitle, "复扫雷 Complexweeper") != null, "标题里应保留程序名");
+        expect(out, std.mem.indexOf(u8, htitle, "双曲复数模式") != null, "标题里应标明双曲复数模式");
+        expect(out, ui.testSubItemChecked(0, 3, 0), "双曲模式的初级应打上圆点");
+        expect(out, !ui.testSubItemChecked(0, 3, 1), "双曲模式的中级不该有圆点");
+        expect(out, !ui.testSubItemChecked(0, 2, 0), "复数模式的初级不该跟着亮");
+        expect(out, ui.testUnitSprite() == ui.testLedJSprite, "双曲模式的计雷器第四格应是 j");
+        expect(out, ui.testUnitSprite() != ui.testLedISprite, "双曲模式不该再用 i 那一格");
+        out.writer().print("14 双曲模式：菜单结构 / 圆点 / 标题 / j 单位 通过\n", .{}) catch {};
+
+// 14c 显示值分派：手搓一个 5×5 双曲局面，核对 D → 贴图（负数走 hnum_*_i）
+        {
+            const gm = ui.game_ptr;
+            gm.w = 5;
+            gm.h = 5;
+            gm.n = 25;
+            gm.mode = .hyper;
+            gm.started = true;
+            gm.over = false;
+            gm.win = false;
+            for (0..25) |k| {
+                gm.mine[k] = 0;
+                gm.clue[k] = -1;
+                gm.open[k] = 0;
+                gm.flag[k] = 0;
+            }
+            // 6=(1,1) 一颗 +1；7=(1,2)、18=(3,3)、19=(3,4) 三颗 +j；21=(4,1) 一颗 +1
+            gm.mine[6] = 1;
+            gm.mine[7] = 3;
+            gm.mine[18] = 3;
+            gm.mine[19] = 3;
+            gm.mine[21] = 1;
+            gm.computeClues();
+            for ([_]usize{ 2, 4, 12, 20, 24 }) |k| gm.open[k] = 1;
+            expect(out, gm.clue[12] == -3, "一格 +1 加两格 +j 的显示值应是 −3");
+            expect(out, gm.clue[20] == 1, "一格 +1 的显示值应是 +1");
+            expect(out, gm.clue[24] == -4, "两格 +j 的显示值应是 −4");
+            expect(out, gm.clue[2] == 0, "一格 +1 加一格 +j 的显示值应是 0");
+            expect(out, ui.testCellSprite(12) == ui.testHnumSprite(-3), "D=−3 应查 hnum_3_i（√3i）");
+            expect(out, ui.testCellSprite(20) == ui.testHnumSprite(1), "D=+1 应查 hnum_1");
+            expect(out, ui.testCellSprite(24) == ui.testHnumSprite(-4), "D=−4 应查 hnum_4_i（2i）");
+            expect(out, ui.testCellSprite(2) == ui.testHnumSprite(0), "有雷但抵消成 0 的格子应显示 0");
+            expect(out, ui.testCellSprite(4) == ui.testBlankSprite, "邻域真的没雷的格子仍应是空白");
+            expect(out, ui.testHnumSprite(-4) != ui.testHnumSprite(4), "2i 与 2 不能共用一张图");
+            out.writer().print("14c 双曲贴图分派：−3→√3i / +1→1 / −4→2i / 0 与空白分开 通过\n", .{}) catch {};
+        }
+
+// 14d 玩法与操作：一篇文案讲两个模式（不再是选项卡窗口）
+        {
+            var hb: [3072]u8 = undefined;
+            const help = u16ToUtf8(&hb, std.mem.span(ui.testHelpText));
+            expect(out, std.mem.indexOf(u8, help, "【复数模式】") != null, "玩法里应有「【复数模式】」这一段");
+            expect(out, std.mem.indexOf(u8, help, "【双曲复数模式】") != null, "玩法里应有「【双曲复数模式】」这一段");
+            expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "复数模式那段的四种雷应按雷的名字列");
+            expect(out, std.mem.indexOf(u8, help, "正 j 雷、负 j 雷") != null, "双曲模式那段应写正 j 雷、负 j 雷");
+            expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "复数模式的判据要写清楚");
+            expect(out, std.mem.indexOf(u8, help, "实部与 j 部的绝对值分别与真实相符") != null, "双曲模式的判据要写清楚");
+            expect(out, std.mem.indexOf(u8, help, "实部平方 − j 部平方") != null, "双曲模式要说清被开方数怎么算");
+            expect(out, std.mem.indexOf(u8, help, "旗帜顺序为正实旗、负实旗、正 j 旗、负 j 旗") != null, "双曲模式的旗帜顺序应是 j 旗");
+            out.writer().print("14d 玩法与操作：一篇文案含两个模式的规则 通过\n", .{}) catch {};
+        }
+// 14e 纪录分模式 + 双曲局照样记账
+        {
+            expect(out, ui.testScoreKeysDiffer(), "两个模式应各记一套纪录（键名不同）");
+            ui.testSetScores(0, 0, 0);
+            ui.testCommand(ui.test_IDM_HYPER_BEGINNER);
+            const Lh = ui.testLayout();
+            const hx = Lh.board_x + 4 * Lh.cell + @divTrunc(Lh.cell, 2);
+            const hy = Lh.board_y + 4 * Lh.cell + @divTrunc(Lh.cell, 2);
+            clearBoard(out, hx, hy, 33_000);
+            expect(out, ui.game_ptr.win, "双曲初级应能通关");
+            expect(out, ui.testGetScore(0) == 33, "双曲模式的用时也该记进初级那一格");
+            out.writer().print("14e 纪录：双曲局照记账 / 两套键名不同 通过\n", .{}) catch {};
+        }
+    }
+
     out.writer().print("\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails }) catch {};
     out.writer().print("{s}\n", .{if (fails == 0) "全部通过" else "存在失败"}) catch {};
     return fails;

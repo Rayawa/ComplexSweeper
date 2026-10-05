@@ -1,6 +1,7 @@
 // 无界面自检：跑规则层不变量，结果写文本文件
 const std = @import("std");
 const g = @import("game.zig");
+const A = @import("assets.zig"); // 只为核对"每个显示值都有贴图"
 const ui = @import("main.zig"); // 只为拿版本号（抬头要写）
 
 var fails: u32 = 0;
@@ -60,6 +61,33 @@ fn buildBoard(game: *g.Game, n: u16, rows: u16, mines: u16, tc: [5]u16, seed: u3
     game.type_count = tc;
     game.newGame(seed);
     game.startAt(start, 0);
+}
+
+/// 双曲自检用：5×5 棋盘中央格（下标 12）周围正好 8 个邻居，按"四种雷的颗数"配比摆上去。
+/// as_flag = true 时摆的是旗帜（不重算显示值），否则摆真雷并重算。
+fn hyperPlace(game: *g.Game, counts: [4]u8, as_flag: bool) void {
+    for (0..25) |i| {
+        if (!as_flag) game.mine[i] = 0;
+        game.flag[i] = 0;
+        game.open[i] = 0;
+        game.clue[i] = -1;
+    }
+    var buf: [8]usize = undefined;
+    const k = game.nbrs(12, &buf);
+    var slot: usize = 0;
+    for (counts, 1..) |c, t| {
+        var j: u8 = 0;
+        while (j < c and slot < k) : (j += 1) {
+            const cell = buf[slot];
+            if (as_flag) {
+                _ = game.setFlag(cell, @intCast(t));
+            } else {
+                game.mine[cell] = @intCast(t);
+            }
+            slot += 1;
+        }
+    }
+    if (!as_flag) game.computeClues();
 }
 
 pub fn run(out: *std.ArrayList(u8)) u32 {
@@ -455,6 +483,140 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             expect(out, !changed, "判据不通过时展开不能改变棋盘");
         }
         note(out, "10 展开门禁：通过\n", .{});
+    }
+
+// ---- 11. 双曲复数模式：显示值集合、贴图覆盖、判据 ----
+    {
+// 枚举 495 种邻域组合（四种雷的颗数 n1..n4，总数 ≤ 8）：两套显示值集合都算一遍。
+// 复数模式必须正好得到现有那 24 个值（模型与已发布实现的交叉验证），
+// 双曲模式必须正好得到 39 个值，且每个值在图集里都有贴图。
+        var seen_c = [_]bool{false} ** 65;
+        var seen_h = [_]bool{false} ** 129;
+        var combos: u32 = 0;
+        var n1: u32 = 0;
+        while (n1 <= 8) : (n1 += 1) {
+            var n2: u32 = 0;
+            while (n1 + n2 <= 8) : (n2 += 1) {
+                var n3: u32 = 0;
+                while (n1 + n2 + n3 <= 8) : (n3 += 1) {
+                    var n4: u32 = 0;
+                    while (n1 + n2 + n3 + n4 <= 8) : (n4 += 1) {
+                        combos += 1;
+                        const a = @as(i32, @intCast(n1)) - @as(i32, @intCast(n2));
+                        const b = @as(i32, @intCast(n3)) - @as(i32, @intCast(n4));
+                        seen_c[@intCast(a * a + b * b)] = true;
+                        seen_h[@intCast(a * a - b * b + 64)] = true;
+                    }
+                }
+            }
+        }
+        expect(out, combos == 495, "邻域组合应枚举出 495 种");
+        var cn: u32 = 0;
+        for (seen_c) |v| {
+            if (v) cn += 1;
+        }
+        var hn: u32 = 0;
+        for (seen_h) |v| {
+            if (v) hn += 1;
+        }
+        expect(out, cn == g.ACHIEVABLE.len, "复数模式的显示值应为 24 个（与现有贴图一致）");
+        expect(out, hn == 39, "双曲模式的显示值应为 39 个");
+        var cplx_bad: u32 = 0;
+        for (g.ACHIEVABLE) |D| {
+            if (!seen_c[D]) cplx_bad += 1;
+        }
+        expect(out, cplx_bad == 0, "复数模式的显示值集合必须正好是 ACHIEVABLE 那 24 个");
+// 19 个模长正负成对 + 一个 0；再核对每个值都有贴图、且贴图没有重复占用
+        const MAG = [19]i32{ 1, 3, 4, 5, 7, 8, 9, 12, 15, 16, 21, 24, 25, 32, 35, 36, 48, 49, 64 };
+        var pair_ok = seen_h[64];
+        for (MAG) |m| {
+            if (!seen_h[@intCast(m + 64)] or !seen_h[@intCast(-m + 64)]) pair_ok = false;
+        }
+        expect(out, pair_ok, "双曲模式应是 19 个模长各带正负、外加一个 0");
+        var missing: u32 = 0;
+        var used = [_]bool{false} ** 256;
+        var dup: u32 = 0;
+        for (0..129) |i| {
+            if (!seen_h[i]) continue;
+            const s = A.hnum_by_D[i];
+            if (s == 0xFFFF) {
+                missing += 1;
+            } else if (used[s]) {
+                dup += 1;
+            } else {
+                used[s] = true;
+            }
+        }
+        expect(out, missing == 0, "双曲模式每个可能的显示值都必须有贴图（hnum_by_D 无空洞）");
+        expect(out, dup == 0, "39 张贴图不该被两个显示值共用");
+        note(out, "11 双曲显示值集合与贴图覆盖：{s}（组合 {d} 种，双曲 {d} 值）\n", .{ if (missing == 0 and dup == 0 and hn == 39) "通过" else "有缺口", combos, hn });
+
+// 显示值算法：a² − b²（复数模式是 a² + b²），负值照算，显示成根式加 i
+        var h: g.Game = .{};
+        h.mode = .hyper;
+        const clues = [_]struct { t: [4]u8, want: i32 }{
+            .{ .t = .{ 1, 0, 0, 0 }, .want = 1 },
+            .{ .t = .{ 0, 0, 1, 0 }, .want = -1 },
+            .{ .t = .{ 1, 0, 1, 0 }, .want = 0 },
+            .{ .t = .{ 2, 0, 0, 0 }, .want = 4 },
+            .{ .t = .{ 0, 2, 0, 0 }, .want = 4 },
+            .{ .t = .{ 1, 0, 2, 0 }, .want = -3 },
+            .{ .t = .{ 0, 0, 2, 0 }, .want = -4 },
+            .{ .t = .{ 2, 1, 3, 1 }, .want = -3 },
+            .{ .t = .{ 4, 0, 0, 4 }, .want = 0 },
+            .{ .t = .{ 0, 0, 6, 0 }, .want = -36 },
+            .{ .t = .{ 3, 0, 4, 0 }, .want = -7 },
+            .{ .t = .{ 4, 0, 0, 0 }, .want = 16 },
+        };
+        var clue_bad: u32 = 0;
+        for (clues) |c| {
+            hyperPlace(&h, c.t, false);
+            if (h.clue[12] != c.want) clue_bad += 1;
+            const idx: usize = @intCast(c.want + 64);
+            if (A.hnum_by_D[idx] == 0xFFFF) clue_bad += 1;
+        }
+        expect(out, clue_bad == 0, "双曲显示值必须是 a² − b²（12 组配比逐一核对）");
+// 同一个配比在复数模式下应得 a² + b²（这里 a=1、b=2）
+        h.mode = .complex;
+        hyperPlace(&h, .{ 2, 1, 3, 1 }, false);
+        expect(out, h.clue[12] == 5, "同一配比在复数模式下应是 a² + b²（1+4=5）");
+        h.mode = .hyper;
+        note(out, "11b 双曲显示值算法（a² − b²）：{s}\n", .{if (clue_bad == 0) "通过" else "有偏差"});
+
+// 判据：真值 = 一颗 +1 加一颗 +j（a=1、b=1、共 2 颗，显示值 0）
+        hyperPlace(&h, .{ 1, 0, 1, 0 }, false);
+        expect(out, h.clue[12] == 0, "真值配比的显示值应为 0");
+        hyperPlace(&h, .{ 1, 0, 1, 0 }, true);
+        expect(out, h.matchComboTruth(12), "旗帜与真值一致时判据应通过");
+        hyperPlace(&h, .{ 0, 1, 0, 1 }, true);
+        expect(out, h.matchComboTruth(12), "推荐判据允许 a、b 各自取负（四种符号组合）");
+        hyperPlace(&h, .{ 1, 1, 0, 0 }, true);
+        expect(out, !h.matchComboTruth(12), "推荐判据：|a|、|b| 不相符必须拦住");
+        h.judge_loose = true;
+        expect(out, h.matchComboTruth(12), "备选判据：同旗数且 a²−b² 相同就应通过");
+        h.judge_loose = false;
+        hyperPlace(&h, .{ 1, 0, 0, 0 }, true);
+        expect(out, !h.matchComboTruth(12), "旗数与真实雷数不符必须拦住（两种判据都一样）");
+        hyperPlace(&h, .{ 2, 0, 0, 0 }, false);
+        hyperPlace(&h, .{ 1, 1, 0, 0 }, true);
+        expect(out, !h.matchComboTruth(12), "旗数 2 = 2 但 |a| 不同（2 与 0）仍须拦住");
+// 展开：判据过了就翻开其余未插旗的邻格（这个 5×5 小盘一次可能就翻完 → 顺带判胜，两种都算过）
+        hyperPlace(&h, .{ 1, 0, 1, 0 }, false);
+        hyperPlace(&h, .{ 1, 0, 1, 0 }, true);
+        h.open[12] = 1;
+        h.over = false;
+        h.win = false;
+        h.boom = -1;
+        h.msg = .none;
+        h.tryExpand(12);
+        expect(out, h.msg == .expand_ok or h.win, "双曲模式判据通过后展开应报 expand_ok");
+        expect(out, h.boom < 0, "邻域里的雷都插了旗，展开不该踩雷");
+        var opened_any = false;
+        for (0..h.n) |i| {
+            if (i != 12 and h.open[i] != 0) opened_any = true;
+        }
+        expect(out, opened_any, "判据通过后应真的翻开邻格");
+        note(out, "11c 双曲判据（推荐 / 备选两档）：通过\n", .{});
     }
 
     note(out, "\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails });

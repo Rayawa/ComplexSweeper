@@ -19,6 +19,11 @@ const IDM_INTERMEDIATE: usize = 102;
 const IDM_EXPERT: usize = 103;
 const IDM_CUSTOM: usize = 104;
 const IDM_EXIT: usize = 105;
+/// 双曲复数模式的同一批命令（两个模式各占一段命令号，菜单里是两个并列的子菜单）
+const IDM_HYPER_BEGINNER: usize = 120;
+const IDM_HYPER_INTERMEDIATE: usize = 121;
+const IDM_HYPER_EXPERT: usize = 122;
+const IDM_HYPER_CUSTOM: usize = 123;
 const IDM_ZOOM1: usize = 110;
 const IDM_ZOOM2: usize = 111;
 const IDM_ZOOM3: usize = 112;
@@ -47,6 +52,13 @@ const C_DARKGRAY = w.rgb(0x40, 0x40, 0x40);
 // 全局
 pub var game: g.Game = .{};
 var zoom: i32 = 2;
+/// 当前是不是双曲复数模式。模式是"设置"而不是"局面"，所以存在 game.mode 里，
+/// 新开一局、换难度都不会把它弄丢；菜单圆点、贴图查表、计雷器单位全靠它分派。
+fn hyper() bool {
+    return game.mode == .hyper;
+}
+/// 当前棋盘对应的档位下标（0/1/2 = 标准三档，-1 = 自定义或界面还没定过）
+var cur_preset: i32 = -1;
 var hwnd_main: w.HWND = null;
 var mem_dc: w.HDC = null;
 var mem_bmp: w.HBITMAP = null;
@@ -448,8 +460,9 @@ fn paint(dc: w.HDC, L: Layout) void {
         const led_x = col_x + L.z + 2 * L.z + 16 * L.z;
         const led_y = cy + @divTrunc(26 * L.z - 23 * L.z, 2);
         const vw = drawLed(dc, led_x, led_y, val, panelValueDigits(imag, val), L.z);
-        // 虚雷还有第四格 i 单位（没开局时那一格也画成空格子，不留白）
-        if (imag) blitSprite(dc, if (val == null) A.led_blank else A.led_i, led_x + vw, led_y, 13 * L.z, 23 * L.z);
+        // 单位雷还有第四格单位记号（没开局时那一格也画成空格子，不留白）：
+        // 复数模式是 i，双曲模式是 j
+        if (imag) blitSprite(dc, if (val == null) A.led_blank else if (hyper()) A.led_j else A.led_i, led_x + vw, led_y, 13 * L.z, 23 * L.z);
         cy += 26 * L.z + 2 * L.z;
     }
     // 计时（右对齐，垂直居中；同样是四格数字）
@@ -554,7 +567,11 @@ fn cellSprite(i: usize) u16 {
         }
         const D = game.clue[i];
         if (D == 0 and game.nbrMineCount(i) == 0) return A.blank;
-        const s = A.num_by_D[@intCast(D)];
+        // 两个模式各查各的表：复数模式 a²+b²（0…64），双曲模式 a²−b²（−64…64，下标 +64）
+        const s = if (hyper())
+            A.hnum_by_D[@intCast(D + 64)]
+        else
+            A.num_by_D[@intCast(D)];
         return if (s == 0xFFFF) A.blank else s;
     }
     if (game.flag[i] != 0) {
@@ -610,7 +627,7 @@ fn repaint(hwnd: w.HWND) void {
 /// 窗口标题固定不变（难度、局面信息都不往标题里塞）
 const APP_TITLE = "复扫雷 Complexweeper";
 /// 版本号：**只有这一处**。以后每次改动都顺手把它 +1，关于对话框与两个自检报告的抬头都读它。
-const APP_VERSION = "1.0.13";
+const APP_VERSION = "1.1.0";
 
 // ------------------------------------------------------------------ 棋盘交互
 fn cellAt(L: Layout, px: i32, py: i32) i32 {
@@ -649,30 +666,45 @@ fn startNewGame(seed_override: ?u32) void {
     _ = w.InvalidateRect(hwnd_main, null, 0);
 }
 
-fn setPreset(idx: i32) void {
-    switch (idx) {
-        0 => {
-            game.w = g.PRESETS[0].w;
-            game.h = g.PRESETS[0].h;
-            game.mines = g.PRESETS[0].mines;
-            game.type_count = [_]u16{0} ** 5;
-        },
-        1 => {
-            game.w = g.PRESETS[1].w;
-            game.h = g.PRESETS[1].h;
-            game.mines = g.PRESETS[1].mines;
-            game.type_count = [_]u16{0} ** 5;
-        },
-        2 => {
-            game.w = g.PRESETS[2].w;
-            game.h = g.PRESETS[2].h;
-            game.mines = g.PRESETS[2].mines;
-            game.type_count = [_]u16{0} ** 5;
-        },
-        else => {},
+fn setPreset(idx: i32, m: g.Mode) void {
+    if (idx >= 0 and idx < g.PRESETS.len) {
+        const p = g.PRESETS[@intCast(idx)];
+        game.w = p.w;
+        game.h = p.h;
+        game.mines = p.mines;
+        game.type_count = [_]u16{0} ** 5;
     }
+    game.mode = m;
+    cur_preset = idx;
+    syncMode();
     resizeWindowForBoard();
     startNewGame(null);
+}
+
+/// 模式或难度换了之后要跟着走的三样东西：窗口标题、菜单圆点、当前模式的那套纪录。
+/// 换模式要重新读纪录（两个模式各记一套），所以这里顺手 loadScores。
+fn syncMode() void {
+    updateTitle();
+    // 换模式要换一整套纪录（两个模式各记三档）。自检模式下整个不碰纪录表，
+    // 否则会把自检自己注入的分数擦掉。
+    if (scores_persist) loadScores();
+    checkMenu();
+}
+
+/// 标题栏：复数模式就是原标题（老样子不变），双曲复数模式在后面挂一个模式名，
+/// 于是任务栏、窗口列表里两个模式的窗口一眼分得开。
+fn updateTitle() void {
+    if (hwnd_main == null) return;
+    if (!hyper()) {
+        _ = w.SetWindowTextW(hwnd_main, w.wstr(APP_TITLE));
+        return;
+    }
+    var buf: [128]u16 = undefined;
+    var n: usize = 0;
+    appendW(&buf, &n, w.wstr(APP_TITLE));
+    appendW(&buf, &n, w.wstr(" · 双曲复数模式"));
+    buf[n] = 0;
+    _ = w.SetWindowTextW(hwnd_main, @ptrCast(&buf));
 }
 
 fn resizeWindowForBoard() void {
@@ -948,7 +980,13 @@ fn runCustomDialog() bool {
 // 和原版扫雷一样用注册表，所以分发仍然只有一个 exe、不会多出存档文件。
 // 自定义棋盘不计入（尺寸/雷数任意，比时间没有意义）。
 const REG_PATH = "Software\\Complexweeper";
-const SCORE_VALUES = [3][*:0]const u16{ w.wstr("Beginner"), w.wstr("Intermediate"), w.wstr("Expert") };
+/// 纪录键名按模式分开：复数模式沿用原来那三个键（老纪录还在），双曲模式另起一套。
+/// 两个模式的难度档位虽然同名同尺寸，但盘面数值规则不同，混在一张表里比时间没有意义。
+const SCORE_VALUES_CPLX = [3][*:0]const u16{ w.wstr("Beginner"), w.wstr("Intermediate"), w.wstr("Expert") };
+const SCORE_VALUES_HYPER = [3][*:0]const u16{ w.wstr("HyperBeginner"), w.wstr("HyperIntermediate"), w.wstr("HyperExpert") };
+fn scoreKeys() [3][*:0]const u16 {
+    return if (hyper()) SCORE_VALUES_HYPER else SCORE_VALUES_CPLX;
+}
 /// 纪录窗里只出现这三行：难度名 + 用时。棋盘尺寸不写（"游戏"菜单里有），
 /// 名字统一两字，等宽字体下三行的用时正好对齐一列。
 const SCORE_LABEL = [3][*:0]const u16{
@@ -971,14 +1009,18 @@ fn presetIndex() i32 {
 }
 
 fn loadScores() void {
+    best_scores = [3]i32{ 0, 0, 0 };
+    // 自检模式整个不碰纪录表：既不写、也不读（否则本机真玩出来的纪录会串进自检的预期里）
+    if (!scores_persist) return;
     var hkey: usize = 0;
     if (w.RegOpenKeyExW(w.HKEY_CURRENT_USER, w.wstr(REG_PATH), 0, w.KEY_READ, &hkey) != w.ERROR_SUCCESS) return;
     defer _ = w.RegCloseKey(hkey);
+    const keys = scoreKeys();
     for (0..3) |i| {
         var data: u32 = 0;
         var size: u32 = @sizeOf(u32);
         var kind: u32 = 0;
-        if (w.RegQueryValueExW(hkey, SCORE_VALUES[i], null, &kind, @ptrCast(&data), &size) == w.ERROR_SUCCESS) {
+        if (w.RegQueryValueExW(hkey, keys[i], null, &kind, @ptrCast(&data), &size) == w.ERROR_SUCCESS) {
             best_scores[i] = @intCast(data);
         }
     }
@@ -989,10 +1031,11 @@ fn saveScores() void {
     var hkey: usize = 0;
     if (w.RegCreateKeyExW(w.HKEY_CURRENT_USER, w.wstr(REG_PATH), 0, null, w.REG_OPTION_NON_VOLATILE, w.KEY_WRITE, null, &hkey, null) != w.ERROR_SUCCESS) return;
     defer _ = w.RegCloseKey(hkey);
+    const keys = scoreKeys();
     for (0..3) |i| {
         if (best_scores[i] <= 0) continue;
         const v: u32 = @intCast(best_scores[i]);
-        _ = w.RegSetValueExW(hkey, SCORE_VALUES[i], 0, w.REG_DWORD, @ptrCast(&v), @sizeOf(u32));
+        _ = w.RegSetValueExW(hkey, keys[i], 0, w.REG_DWORD, @ptrCast(&v), @sizeOf(u32));
     }
 }
 
@@ -1315,6 +1358,8 @@ fn mainWndProc(hwnd: w.HWND, msg: w.UINT, wp: w.WPARAM, lp: w.LPARAM) callconv(.
 
 /// 自定义对话框点「确定」之后的收尾：菜单与自检走同一条路（顺手把窗口尺寸与局面重排）
 fn applyCustomFromDialog() void {
+    cur_preset = -1; // 自定义棋盘没有档位，菜单圆点全部落空
+    checkMenu();
     resizeWindowForBoard();
     startNewGame(null);
 }
@@ -1322,10 +1367,16 @@ fn applyCustomFromDialog() void {
 fn handleCommand(hwnd: w.HWND, id: usize) void {
     switch (id) {
         IDM_NEW => startNewGame(null),
-        IDM_BEGINNER => setPreset(0),
-        IDM_INTERMEDIATE => setPreset(1),
-        IDM_EXPERT => setPreset(2),
+        IDM_BEGINNER => setPreset(0, .complex),
+        IDM_INTERMEDIATE => setPreset(1, .complex),
+        IDM_EXPERT => setPreset(2, .complex),
         IDM_CUSTOM => {
+            if (runCustomDialog()) applyCustomFromDialog();
+        },
+        IDM_HYPER_BEGINNER => setPreset(0, .hyper),
+        IDM_HYPER_INTERMEDIATE => setPreset(1, .hyper),
+        IDM_HYPER_EXPERT => setPreset(2, .hyper),
+        IDM_HYPER_CUSTOM => {
             if (runCustomDialog()) applyCustomFromDialog();
         },
         IDM_BEST => showBestScores(false),
@@ -1377,17 +1428,23 @@ fn showAbout() void {
     _ = w.MessageBoxIndirectW(&mp);
 }
 
-/// 「玩法与操作」正文：三小段——四种雷的名字 + 五行操作 + 数字含义 + 展开条件。
+/// 「玩法与操作」正文：一篇文案讲两个模式。
+/// 开头是两种模式通用的操作，下面分别写复数模式与双曲复数模式（四种雷的名字、数字怎么算、判据）。
 /// 规矩：雷说雷的名字（正实雷…），旗说旗的名字（正实旗…），**不写 `+1/−1/+i/−i` 那套符号**。
-const HELP_TEXT = "雷区里有四种雷，分别是正实雷、负实雷、正虚雷、负虚雷。\r\n" ++
-    "左键翻开格子。\r\n" ++
-    "右键插旗，旗帜顺序为正实旗、负实旗、正虚旗、负虚旗。\r\n" ++
-    "中键或左右键同时点击展开格子。\r\n" ++
-    "F2开局。\r\n" ++
+const HELP_TEXT = "雷区里有四种雷。左键翻开格子，右键循环插旗，中键或左右键同时点击展开格子，F2 开局。\r\n" ++
+    "本程序有两种玩法模式，操作完全一样，只有四种雷的名字与数字的算法不同。\r\n" ++
     "\r\n" ++
+    "【复数模式】i 乘 i 等于 −1\r\n" ++
+    "四种雷分别是正实雷、负实雷、正虚雷、负虚雷；右键插旗，旗帜顺序为正实旗、负实旗、正虚旗、负虚旗。\r\n" ++
     "数字代表该格周围所有雷的加和之模长，均为整数或最简根式。\r\n" ++
+    "当旗帜数量等于周围真实雷数，且实虚比例符合真实比例或其倒数，则可以展开。\r\n" ++
     "\r\n" ++
-    "当旗帜数量等于周围真实雷数，且实虚比例符合真实比例或其倒数，则可以展开。";
+    "【双曲复数模式】j 乘 j 等于 1\r\n" ++
+    "四种雷分别是正实雷、负实雷、正 j 雷、负 j 雷；右键插旗，旗帜顺序为正实旗、负实旗、正 j 旗、负 j 旗。\r\n" ++
+    "数字是该格周围所有雷之加和的模长：一颗实雷贡献 1，一颗 j 雷贡献 −1，于是被开方数是\r\n" ++
+    "「实部平方 − j 部平方」，均为整数或最简根式；被开方数为负时，数字后面带一个 i 单位\r\n" ++
+    "（例如 2i 就是 −4 开平方）——这个 i 只是「开出来是虚的」的记号，与 j 类雷无关。\r\n" ++
+    "当旗帜数量等于周围真实雷数，且实部与 j 部的绝对值分别与真实相符，则可以展开。";
 
 fn showHelp() void {
     _ = w.MessageBoxW(hwnd_main, w.wstr(HELP_TEXT), w.wstr("玩法与操作"), w.MB.OK | w.MB.ICONINFORMATION);
@@ -1398,10 +1455,24 @@ fn buildMenu() w.HMENU {
     const game_menu = w.CreatePopupMenu();
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_NEW, w.wstr("开局(&N)\tF2"));
     _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
-    _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_BEGINNER, w.wstr("初级(&B)\t9×9 · 10 雷"));
-    _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_INTERMEDIATE, w.wstr("中级(&I)\t16×16 · 40 雷"));
-    _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_EXPERT, w.wstr("高级(&E)\t30×16 · 99 雷"));
-    _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_CUSTOM, w.wstr("自定义(&C)…"));
+    // 两个玩法模式各是一个子菜单，难度（三档 + 自定义）在模式里面。
+    // 圆点跟着"当前模式 + 当前难度"走，见 checkMenu()。
+    const cplx_menu = w.CreatePopupMenu();
+    _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_BEGINNER, w.wstr("初级(&B)\t9×9 · 10 雷"));
+    _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_INTERMEDIATE, w.wstr("中级(&I)\t16×16 · 40 雷"));
+    _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_EXPERT, w.wstr("高级(&E)\t30×16 · 99 雷"));
+    _ = w.AppendMenuW(cplx_menu, w.MF.SEPARATOR, 0, null);
+    _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_CUSTOM, w.wstr("自定义雷区(&C)…"));
+    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(cplx_menu), w.wstr("复数模式(&C)"));
+
+    const hyper_menu = w.CreatePopupMenu();
+    _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_BEGINNER, w.wstr("初级(&B)\t9×9 · 10 雷"));
+    _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_INTERMEDIATE, w.wstr("中级(&I)\t16×16 · 40 雷"));
+    _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_EXPERT, w.wstr("高级(&E)\t30×16 · 99 雷"));
+    _ = w.AppendMenuW(hyper_menu, w.MF.SEPARATOR, 0, null);
+    _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_CUSTOM, w.wstr("自定义雷区(&C)…"));
+    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(hyper_menu), w.wstr("双曲复数模式(&H)"));
+
     _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_BEST, w.wstr("最高分纪录(&R)…"));
     _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
@@ -1420,10 +1491,30 @@ fn buildMenu() w.HMENU {
     return bar;
 }
 
-/// 菜单里不再画「当前难度」的项目符号：原版用圆点，但我们的选中态没跟着难度切换更新，
-/// 留着反而像 bug。菜单保持干净，难度看标题栏。
+/// 游戏菜单里两个模式子菜单的位置（只数游戏菜单自己的项目：开局、分隔线、复数模式、双曲复数模式…）
+const MODE_MENU_INDEX = [2]i32{ 2, 3 };
+
+/// 菜单圆点：只有"当前模式 + 当前难度"那一项是选中态（另一个模式的同名档位不勾），
+/// 自定义棋盘或者界面还没定过档位时三档全部落空。
+/// 用 CheckMenuRadioItem 画出来的是圆点（原版扫雷那样），不是对勾。
 fn checkMenu() void {
     if (hwnd_main == null) return;
+    const bar = w.GetMenu(hwnd_main);
+    if (bar == null) return;
+    const game_menu = w.GetSubMenu(bar, 0);
+    if (game_menu == null) return;
+    const cur_mode: i32 = if (hyper()) 1 else 0;
+    for (0..2) |k| {
+        const sub = w.GetSubMenu(game_menu, MODE_MENU_INDEX[k]);
+        if (sub == null) continue;
+        const pick: i32 = if (cur_mode == @as(i32, @intCast(k))) cur_preset else -1;
+        if (pick >= 0 and pick < 3) {
+            _ = w.CheckMenuRadioItem(sub, 0, 2, @intCast(pick), w.MF.BYPOSITION);
+        } else {
+            var i: i32 = 0;
+            while (i < 3) : (i += 1) _ = w.CheckMenuItem(sub, @intCast(i), w.MF.BYPOSITION);
+        }
+    }
 }
 
 // ------------------------------------------------------------------ 图集
@@ -1610,6 +1701,7 @@ fn parseArgs() void {
         if (std.mem.eql(u8, arg, "--demo-lose")) demo_mode = .lose;
         if (std.mem.eql(u8, arg, "--demo-win")) demo_mode = .win;
         if (std.mem.eql(u8, arg, "--custom")) demo_mode = .custom;
+        if (std.mem.eql(u8, arg, "--demo-hyper")) demo_mode = .hyper;
         if (std.mem.eql(u8, arg, "--zoom1")) zoom = 1;
         if (std.mem.eql(u8, arg, "--zoom2")) zoom = 2;
         if (std.mem.eql(u8, arg, "--zoom3")) zoom = 3;
@@ -1631,13 +1723,42 @@ fn parseArgs() void {
 var window_shot = false;
 var sheet_mode = false;
 
-const DemoMode = enum { none, mid, lose, win, custom };
+const DemoMode = enum { none, mid, lose, win, custom, hyper };
 var demo_mode: DemoMode = .none;
 
 /// 造一个可复现的局面用于截图核对
 fn setupDemo() void {
     switch (demo_mode) {
         .none => return,
+        .hyper => {
+            // 双曲复数模式的截图盘：中间开一片，边上一排旗（四种雷各几面），
+            // 用来核对负数显示、i 单位、计雷器第四格的 j。
+            game.mode = .hyper;
+            game.w = 16;
+            game.h = 16;
+            game.mines = 40;
+            game.newGame(20260101);
+            game.startAt(8 * 16 + 8, 0);
+            game.setMsg(.started);
+            game.elapsed_ms = 83_000;
+            syncMode();
+            var i: usize = 0;
+            var opened: u32 = 0;
+            while (i < game.n and opened < 24) : (i += 1) {
+                if (game.mine[i] != 0 or game.open[i] != 0) continue;
+                game.reveal(i, 0);
+                opened += 1;
+                if (game.over) break;
+            }
+            var flagged: u32 = 0;
+            i = 0;
+            while (i < game.n and flagged < 8) : (i += 1) {
+                if (game.open[i] != 0) continue;
+                _ = game.setFlag(i, @intCast(1 + (flagged % 4)));
+                flagged += 1;
+            }
+            return;
+        },
         .custom => {
             game.w = 12;
             game.h = 12;
@@ -2010,6 +2131,66 @@ pub const test_IDM_HELP_ABOUT = IDM_HELP_ABOUT;
 pub const test_IDM_BEST = IDM_BEST;
 /// 被删掉的那条菜单命令（显示值对照表）的 ID：菜单里绝不该再出现它
 pub const test_IDM_HELP_TABLE_REMOVED: usize = 201;
+pub const test_IDM_HYPER_BEGINNER = IDM_HYPER_BEGINNER;
+pub const test_IDM_HYPER_INTERMEDIATE = IDM_HYPER_INTERMEDIATE;
+pub const test_IDM_HYPER_EXPERT = IDM_HYPER_EXPERT;
+pub const test_IDM_HYPER_CUSTOM = IDM_HYPER_CUSTOM;
+pub const test_IDM_CUSTOM = IDM_CUSTOM;
+
+/// 当前是不是双曲复数模式
+pub fn testIsHyper() bool {
+    return hyper();
+}
+/// 当前档位（0/1/2 = 标准三档，-1 = 自定义）
+pub fn testPresetIndex() i32 {
+    return cur_preset;
+}
+/// 计雷器第四格（单位格）现在用哪张贴图：复数模式 led_i，双曲模式 led_j
+pub fn testUnitSprite() u16 {
+    return if (hyper()) A.led_j else A.led_i;
+}
+pub const testLedISprite = A.led_i;
+pub const testLedJSprite = A.led_j;
+/// 双曲模式的显示值 → 贴图（界面查的就是这张表）
+pub fn testHnumSprite(D: i32) u16 {
+    return A.hnum_by_D[@intCast(D + 64)];
+}
+/// 两套纪录键名确实是两套（防"加了模式却忘了换键"）
+pub fn testScoreKeysDiffer() bool {
+    for (0..3) |i| {
+        if (SCORE_VALUES_HYPER[i][0] == SCORE_VALUES_CPLX[i][0]) return false;
+    }
+    return true;
+}
+/// 菜单结构：第 top 个下拉里第 sub_idx 个子菜单的第 j 项命令 ID（-1 = 分隔线/子菜单/不存在）
+pub fn testSubItemId(top: i32, sub_idx: i32, j: i32) i32 {
+    const bar = w.GetMenu(hwnd_main);
+    if (bar == null) return -1;
+    const menu = w.GetSubMenu(bar, top);
+    if (menu == null) return -1;
+    const sub = w.GetSubMenu(menu, sub_idx);
+    if (sub == null) return -1;
+    return @bitCast(w.GetMenuItemID(sub, j));
+}
+/// 第 top 个下拉里第 sub_idx 个子菜单的第 j 项有没有圆点/对勾
+pub fn testSubItemChecked(top: i32, sub_idx: i32, j: i32) bool {
+    const bar = w.GetMenu(hwnd_main);
+    if (bar == null) return false;
+    const menu = w.GetSubMenu(bar, top);
+    if (menu == null) return false;
+    const sub = w.GetSubMenu(menu, sub_idx);
+    if (sub == null) return false;
+    const st = w.GetMenuState(sub, @intCast(j), w.MF.BYPOSITION);
+    return (st & w.MF.CHECKED) != 0;
+}
+/// 菜单里第 top 个下拉的第 idx 项命令 ID（-1 = 分隔线/子菜单）
+pub fn testPopupItemId(top: i32, idx: i32) i32 {
+    const bar = w.GetMenu(hwnd_main);
+    if (bar == null) return -1;
+    const sub = w.GetSubMenu(bar, top);
+    if (sub == null) return -1;
+    return @bitCast(w.GetMenuItemID(sub, idx));
+}
 
 pub fn testWindow() w.HWND {
     return hwnd_main;
@@ -2131,22 +2312,25 @@ pub fn testMouse(msg: w.UINT, x: i32, y: i32) void {
 }
 /// 菜单里到底挂了哪些命令：遍历菜单栏的每个下拉，收集所有命令 ID。
 /// 不给真实点击菜单的机会（那会进模态循环），所以直接查系统里的菜单句柄。
+/// 菜单里到底挂了哪些命令：递归遍历整棵菜单树（难度项现在在"模式 → 难度"里，是第三层）。
+/// 不给真实点击菜单的机会（那会进模态循环），所以直接查系统里的菜单句柄。
 pub fn testMenuHasId(id: usize) bool {
     const bar = w.GetMenu(hwnd_main);
     if (bar == null) return false;
-    const tops = w.GetMenuItemCount(bar);
+    return menuTreeHasId(bar, id, 0);
+}
+
+fn menuTreeHasId(menu: w.HMENU, id: usize, depth: u32) bool {
+    if (depth > 4) return false;
+    const items = w.GetMenuItemCount(menu);
     var i: i32 = 0;
-    while (i < tops) : (i += 1) {
-        const sub = w.GetSubMenu(bar, i);
-        if (sub == null) {
-            if (w.GetMenuItemID(bar, i) == @as(u32, @intCast(id))) return true;
+    while (i < items) : (i += 1) {
+        const sub = w.GetSubMenu(menu, i);
+        if (sub != null) {
+            if (menuTreeHasId(sub, id, depth + 1)) return true;
             continue;
         }
-        const items = w.GetMenuItemCount(sub);
-        var j: i32 = 0;
-        while (j < items) : (j += 1) {
-            if (w.GetMenuItemID(sub, j) == @as(u32, @intCast(id))) return true;
-        }
+        if (w.GetMenuItemID(menu, i) == @as(u32, @intCast(id))) return true;
     }
     return false;
 }

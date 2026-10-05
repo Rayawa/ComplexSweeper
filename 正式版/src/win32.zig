@@ -1,5 +1,4 @@
-// 手写的 Win32 绑定：只声明本程序用到的部分，不依赖任何第三方包，也不依赖 libc。
-// 目标平台固定为 x86_64-windows（x64 上只有一种调用约定，所以统一用 callconv(.c)）。
+// 手写 Win32 绑定：只声明用到的部分，不依赖第三方包，也不依赖 libc
 const std = @import("std");
 
 pub const HINSTANCE = ?*anyopaque;
@@ -193,14 +192,13 @@ pub const MB = struct {
     pub const OK: UINT = 0x00000000;
     pub const ICONINFORMATION: UINT = 0x00000040;
     pub const ICONWARNING: UINT = 0x00000030;
-    /// 配合 MessageBoxIndirect 的 lpszIcon 用：不加这一位，弹窗不会显示自己的图标
+/// 少了这一位，MessageBoxIndirect 不会显示自己的图标
     pub const USERICON: UINT = 0x00000080;
     pub const SETFOREGROUND: UINT = 0x00010000;
     pub const TOPMOST: UINT = 0x00040000;
 };
 
-/// MessageBoxIndirect 的参数包。用它才能在弹窗里放**自己的图标**
-/// （MessageBoxW 的 dwStyle 只能选那几个系统预设图标）。
+/// MessageBoxIndirect 的参数包
 pub const MSGBOXPARAMS = extern struct {
     cbSize: UINT,
     hwndOwner: HWND,
@@ -208,8 +206,7 @@ pub const MSGBOXPARAMS = extern struct {
     lpszText: LPCWSTR,
     lpszCaption: LPCWSTR,
     dwStyle: DWORD,
-    /// 图标：既可以传资源 ID（低位为 0 时系统当成 ID），也可以传宽字符串。
-    /// ID 不保证 u16 对齐（例如 ID=1），所以这里不用 LPCWSTR，交给 resId() 造。
+/// 图标：可传资源 ID，也可传宽字符串
     lpszIcon: ?*const anyopaque,
     dwContextHelpId: usize,
     lpfnMsgBoxCallback: ?*const fn (usize) callconv(.c) void,
@@ -240,20 +237,15 @@ pub extern "user32" fn SetCapture(HWND) callconv(.c) HWND;
 pub extern "user32" fn ReleaseCapture() callconv(.c) BOOL;
 pub extern "user32" fn GetCapture() callconv(.c) HWND;
 
-// ---------------------------------------------------------------- 音效（winmm）
-// 只用到 PlaySound 这一个入口：wav 已经被编进 exe（和贴图一样），用 SND_MEMORY 直接喂内存。
-// 第一个参数在 SND_MEMORY 时是"指向 wav 镜像的指针"，这里用 ?*const anyopaque 接：
-// 写成 LPCWSTR（以 0 结尾的 u16 串）会要求 2 字节对齐，还会顺着内存往后找结束符。
 pub const SND_ASYNC: DWORD = 0x0001; // 立刻返回，不阻塞消息循环
 pub const SND_NODEFAULT: DWORD = 0x0002; // 出错就静默，别放系统默认提示音
 pub const SND_MEMORY: DWORD = 0x0004; // 第一个参数指向内存里的 wav
 pub extern "winmm" fn PlaySoundW(?*const anyopaque, ?*anyopaque, DWORD) callconv(.c) BOOL;
 pub extern "user32" fn LoadCursorW(HINSTANCE, LPCWSTR) callconv(.c) HCURSOR;
 pub extern "user32" fn LoadIconW(HINSTANCE, ?*const anyopaque) callconv(.c) HICON;
-/// 按指定尺寸取图标资源（图标资源里放了 16/32/48 三档，这里点名要哪一档）
+/// 按尺寸取图标资源（16/32/48 三档）
 pub extern "user32" fn LoadImageW(HINSTANCE, ?*const anyopaque, UINT, i32, i32, UINT) callconv(.c) HANDLE;
-/// MAKEINTRESOURCE：把整数资源 ID 当"指针"传（低位为 0 时系统认作 ID）。
-/// 不写成 LPCWSTR 是因为 ID 只保证是整数，1 这种奇数地址过不了 u16 的对齐要求。
+/// MAKEINTRESOURCE：整数资源 ID 当指针传
 pub fn resId(id: usize) ?*const anyopaque {
     return @ptrFromInt(id);
 }
@@ -287,7 +279,7 @@ pub extern "user32" fn GetMenu(HWND) callconv(.c) HMENU;
 pub extern "user32" fn GetSubMenu(HMENU, i32) callconv(.c) HMENU;
 pub extern "user32" fn GetMenuItemCount(HMENU) callconv(.c) i32;
 pub extern "user32" fn GetMenuItemID(HMENU, i32) callconv(.c) UINT;
-/// 遍历子控件（自检用它把对话框里的标签文案收出来核对）
+/// 遍历子控件（自检收文案用）
 pub extern "user32" fn EnumChildWindows(HWND, ?*const fn (HWND, LPARAM) callconv(.c) BOOL, LPARAM) callconv(.c) BOOL;
 pub extern "user32" fn IsChild(HWND, HWND) callconv(.c) BOOL;
 pub extern "user32" fn GetFocus() callconv(.c) HWND;
@@ -362,8 +354,7 @@ pub const C_BTNHIGHLIGHT = rgb(0xDF, 0xDF, 0xDF);
 pub const C_BTNDKSHADOW = rgb(0x00, 0x00, 0x00);
 pub const C_BTNLIGHT = rgb(0xFF, 0xFF, 0xFF);
 
-/// 编译期把 UTF-8 字面量转成 UTF-16（只处理 BMP，够用）。
-/// 用 comptime 块返回指向编译期常量的指针，字符串会被放进只读数据段。
+/// 编译期 UTF-8 → UTF-16（只处理 BMP）
 pub fn wstr(comptime s: []const u8) *const [wlen(s):0]u16 {
     return comptime blk: {
         const N = wlen(s);
@@ -382,7 +373,7 @@ pub fn wstr(comptime s: []const u8) *const [wlen(s):0]u16 {
                 buf[o] = (@as(u16, c & 0x0F) << 12) | (@as(u16, s[i + 1] & 0x3F) << 6) | @as(u16, s[i + 2] & 0x3F);
                 i += 3;
             } else {
-                // 4 字节：转成代理对
+// 4 字节：转成代理对
                 const cp: u21 = (@as(u21, c & 0x07) << 18) | (@as(u21, s[i + 1] & 0x3F) << 12) |
                     (@as(u21, s[i + 2] & 0x3F) << 6) | @as(u21, s[i + 3] & 0x3F);
                 const v = cp - 0x10000;
@@ -410,14 +401,14 @@ fn wlen(comptime s: []const u8) usize {
             i += 3;
         } else {
             i += 4;
-            n += 1; // 代理对占两个 u16
+            n += 1;
         }
         n += 1;
     }
     return n;
 }
 
-/// 运行时 ascii -> utf16（数字、路径这类）
+/// 运行时 ascii → utf16
 pub fn asciiToW(buf: []u16, s: []const u8) [:0]u16 {
     const n = @min(s.len, buf.len - 1);
     for (s[0..n], 0..) |c, i| buf[i] = c;
@@ -431,7 +422,7 @@ pub fn u32ToW(buf: []u16, v: u32) [:0]u16 {
     return asciiToW(buf, s);
 }
 
-// ---- advapi32：最高分纪录写在 HKCU（和原版扫雷一样，不产生额外文件） ----
+// ---- advapi32：最高分纪录写在 HKCU ----
 pub const HKEY_CURRENT_USER: usize = 0x80000001;
 pub const KEY_READ: u32 = 0x20019;
 pub const KEY_WRITE: u32 = 0x20006;

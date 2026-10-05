@@ -1,5 +1,4 @@
-﻿// 无界面自检：把规则层的所有不变量跑一遍，结果写进文本文件。
-// 用法: 复扫雷.exe --selftest 报告.txt   （退出码 0 = 全过）
+// 无界面自检：跑规则层不变量，结果写文本文件
 const std = @import("std");
 const g = @import("game.zig");
 const ui = @import("main.zig"); // 只为拿版本号（抬头要写）
@@ -19,7 +18,7 @@ fn note(out: *std.ArrayList(u8), comptime fmt: []const u8, args: anytype) void {
     out.writer().print(fmt, args) catch {};
 }
 
-/// 独立的洪水填充实现，用来核对游戏里的连片
+/// 独立的洪水填充，用来核对连片
 fn expectedCascade(game: *const g.Game, start: usize, set: *[g.MAX_CELLS]bool) void {
     for (0..g.MAX_CELLS) |i| set[i] = false;
     var stack: [g.MAX_CELLS]usize = undefined;
@@ -42,7 +41,7 @@ fn expectedCascade(game: *const g.Game, start: usize, set: *[g.MAX_CELLS]bool) v
             }
         }
     }
-    // 连片覆盖 = 连通空白格 ∪ 它们的非雷邻居
+// 连片覆盖 = 连通空白格 ∪ 它们的非雷邻居
     for (0..game.n) |i| {
         if (!comp[i]) continue;
         set[i] = true;
@@ -70,7 +69,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
 
     note(out, "复扫雷 {s} · 规则自检\n==========================\n", .{ui.testAppVersion});
 
-    // ---- 1. 随机数确定性 ----
+// ---- 1. 随机数确定性 ----
     {
         var a: g.Game = .{};
         var b: g.Game = .{};
@@ -91,7 +90,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "1 随机数确定性：通过（校验 {d} 项）\n", .{checks});
     }
 
-    // ---- 2. 精确配比 ----
+// ---- 2. 精确配比 ----
     {
         const cases = [_][5]u16{
             .{ 0, 3, 2, 4, 1 },
@@ -117,7 +116,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "2 精确配比：{s}\n", .{if (bad == 0) "通过" else "有偏差"});
     }
 
-    // ---- 3. 纯实 / 纯虚局面的显示值全是完全平方数 ----
+// ---- 3. 纯实 / 纯虚局面的显示值全是完全平方数 ----
     {
         var bad: u32 = 0;
         const pure = [_][5]u16{ .{ 0, 5, 5, 0, 0 }, .{ 0, 0, 0, 4, 4 } };
@@ -150,7 +149,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "3 纯实/纯虚不变量：{s}\n", .{if (bad == 0) "通过" else "失败"});
     }
 
-    // ---- 4. 连片：与独立洪水填充逐格一致，且绝不翻雷 ----
+// ---- 4. 连片：与独立洪水填充逐格一致，且绝不翻雷 ----
     {
         var mismatch: u32 = 0;
         var mine_opened: u32 = 0;
@@ -162,7 +161,6 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             var i: usize = 0;
             while (i < game.n and samples < 40) : (i += 1) {
                 if (game.mine[i] != 0 or game.open[i] != 0 or !game.isBlank(i)) continue;
-                // 干净棋盘上单独点这一格
                 buildBoard(&game, 12, 12, 24, [_]u16{0} ** 5, seed, 70);
                 if (game.open[i] != 0) continue;
                 var before: [g.MAX_CELLS]bool = undefined;
@@ -178,7 +176,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
                     if (got and game.mine[k] != 0) mine_opened += 1;
                 }
             }
-            // 显示 0（邻域有雷相消）绝不连片
+// 显示 0 绝不连片
             buildBoard(&game, 12, 12, 24, [_]u16{0} ** 5, seed, 70);
             for (0..game.n) |k| {
                 if (game.mine[k] != 0 or game.open[k] != 0) continue;
@@ -202,10 +200,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "4 连片展开：空白样本 {d}，显示 0 样本 {d}，不一致 {d}，翻雷 {d}\n", .{ samples, zero_samples, mismatch, mine_opened });
     }
 
-    // ---- 4b. 大盘开局连片：栈吃满也不许漏格 ----
-    // 40×30 这种大盘上，一片空白会让同一个格子被反复压入，把 [MAX_CELLS] 的栈吃满；
-    // 栈满就只能丢掉多出来的相邻格，留下本该翻开的格子（玩家看得见）。这条专门覆盖
-    // MAX_W × MAX_H，把开局连片的结果与独立洪水填充逐格比对。
+// ---- 4b. 大盘开局连片：栈吃满也不许漏格 ----
     {
         const shapes = [_]struct { w: u16, h: u16, m: u16 }{
             .{ .w = 40, .h = 30, .m = 1 },
@@ -223,7 +218,6 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         for (shapes) |sh| {
             const bw: usize = sh.w;
             const bh: usize = sh.h;
-            // 角、上边中点、正中、右下角：换着开局格，覆盖不同的扩散顺序
             const starts = [_]usize{ 0, bw / 2, (bh / 2) * bw + bw / 2, bw * bh - 1 };
             for ([_]u32{ 4111, 4127, 4133, 4139, 4153, 4159 }) |seed| {
                 for (starts) |st| {
@@ -248,7 +242,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "4b 大盘连片：样本 {d}，大连片 {d} 次，一次最多翻开 {d} 格，逐格不一致 {d}\n", .{ samples, big, worst, mismatch });
     }
 
-    // ---- 5. 开局必定连片且不踩雷 ----
+// ---- 5. 开局必定连片且不踩雷 ----
     {
         var bad: u32 = 0;
         for ([_]u32{ 501, 502, 503, 504, 505 }) |seed| {
@@ -262,7 +256,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             if (gm.over) bad += 1;
             if (gm.openedCount() < 9) bad += 1;
             if (!gm.isBlank(start)) bad += 1;
-            // 开局后各类雷数必须已知，且合计 = 总雷数
+// 开局后各类雷数已知，且合计 = 总雷数
             if (gm.typeSum() != 40) bad += 1;
             for (1..5) |t| {
                 if (gm.type_total[t] == 0 and gm.mines >= 40) bad += 1;
@@ -273,7 +267,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "5 开局连片与分类计数：{s}\n", .{if (bad == 0) "通过" else "失败"});
     }
 
-    // ---- 6. 判据：与独立实现一致 ----
+// ---- 6. 判据：与独立实现一致 ----
     {
         var mismatch: u32 = 0;
         var pass: u32 = 0;
@@ -282,7 +276,6 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             buildBoard(&game, 12, 12, 24, [_]u16{0} ** 5, seed, 70);
             for (0..game.n) |i| {
                 if (game.mine[i] != 0 or game.open[i] == 0) continue;
-                // 随机插一些旗
                 var t: usize = 1;
                 var buf: [8]usize = undefined;
                 const k = game.nbrs(i, &buf);
@@ -291,7 +284,6 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
                     _ = game.setFlag(j, @intCast(1 + ((i + j) % 4)));
                     t += 1;
                 }
-                // 独立算一遍
                 var truth = [4]i32{ 0, 0, 0, 0 };
                 var got = [4]i32{ 0, 0, 0, 0 };
                 for (buf[0..k]) |j| {
@@ -308,7 +300,6 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
                 if (want != mine) mismatch += 1;
                 if (want) pass += 1;
             }
-            // 清旗，避免影响下一轮
             for (0..game.n) |j| _ = game.setFlag(j, 0);
         }
         expect(out, total > 50, "判据样本数足够");
@@ -317,7 +308,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "6 组合匹配判据：样本 {d}，放行 {d}，不一致 {d}\n", .{ total, pass, mismatch });
     }
 
-    // ---- 7. 插旗不限量 + 循环顺序 ----
+// ---- 7. 插旗不限量 + 循环顺序 ----
     {
         buildBoard(&game, 9, 9, 10, [_]u16{0} ** 5, 701, 40);
         var placed: u32 = 0;
@@ -328,7 +319,6 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, placed > 0, "所有未翻开格都能插旗");
         expect(out, game.flags_of[1] == placed, "计数与实际插旗数一致");
         expect(out, game.unmarked(1) < 0, "插超后未标记数应为负数");
-        // 循环顺序
         var cell: usize = 0;
         for (0..game.n) |i| {
             if (game.open[i] == 0) {
@@ -351,7 +341,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "7 插旗不限量：插了 {d} 面，循环 {any}\n", .{ placed, seq });
     }
 
-    // ---- 8. 翻开已插旗格：先清旗再翻开 ----
+// ---- 8. 翻开已插旗格：先清旗再翻开 ----
     {
         buildBoard(&game, 9, 9, 10, [_]u16{0} ** 5, 801, 40);
         var cell: usize = 0;
@@ -363,12 +353,12 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         }
         _ = game.setFlag(cell, 3);
         expect(out, game.flags_of[3] == 1, "插旗后计数为 1");
-        // 旗子保护格子：插了旗就翻不开（传统扫雷的做法）
+// 旗子保护格子：插了旗就翻不开
         game.reveal(cell, 0);
         expect(out, game.open[cell] == 0, "插旗的格子翻不开");
         expect(out, game.flag[cell] == 3, "翻不开时旗帜应原样保留");
         expect(out, game.flags_of[3] == 1, "翻不开时计数不动");
-        // 连片展开也不该把旗子吃掉：找一格空白格，给它的一个邻格插旗，再翻开那格
+// 连片也不该把旗子吃掉
         var blank: usize = 0;
         var flagged_nbr: usize = 0;
         var found = false;
@@ -393,7 +383,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             expect(out, game.open[flagged_nbr] == 0, "连片展开不该翻开插了旗的格子");
             expect(out, game.flag[flagged_nbr] == 1, "连片展开不该清掉旗子");
         }
-        // 撤旗之后才翻得开
+// 撤旗之后才翻得开
         _ = game.setFlag(cell, 0);
         game.reveal(cell, 0);
         expect(out, game.open[cell] == 1, "撤旗后应能翻开");
@@ -401,15 +391,15 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "8 旗子保护格子（翻不开、连片也不碰）：通过\n", .{});
     }
 
-    // ---- 9. 胜负判定 ----
+// ---- 9. 胜负判定 ----
     {
-        // 胜利：翻开全部非雷格即可，旗帜不参与
+// 胜利：翻开全部非雷格即可，旗帜不参与
         buildBoard(&game, 9, 9, 10, [_]u16{0} ** 5, 901, 40);
         for (0..game.n) |i| {
             if (game.mine[i] == 0 and game.open[i] == 0) game.reveal(i, 0);
         }
         expect(out, game.win and game.over, "翻开所有非雷格必须判胜");
-        // 反面：留一个非雷格就不算胜
+// 留一个非雷格就不算胜
         buildBoard(&game, 9, 9, 10, [_]u16{0} ** 5, 902, 40);
         var left: usize = 0;
         for (0..game.n) |i| {
@@ -422,7 +412,6 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             if (i != left and game.mine[i] == 0 and game.open[i] == 0) game.reveal(i, 0);
         }
         expect(out, !game.win, "还剩非雷格未翻开时不能判胜");
-        // 踩雷
         buildBoard(&game, 9, 9, 10, [_]u16{0} ** 5, 903, 40);
         var m: usize = 0;
         for (0..game.n) |i| {
@@ -437,7 +426,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "9 胜负判定：通过\n", .{});
     }
 
-    // ---- 10. 展开：判据不过时棋盘不变；过了才动 ----
+// ---- 10. 展开：判据不过时棋盘不变 ----
     {
         buildBoard(&game, 12, 12, 24, [_]u16{0} ** 5, 1001, 70);
         var cell: usize = 0;

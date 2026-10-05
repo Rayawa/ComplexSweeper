@@ -10,7 +10,7 @@ const snd = @import("sounds.zig");
 const CLASS_MAIN = "ComplexSweeperMain";
 const CLASS_DLG = "ComplexSweeperDlg";
 const TIMER_ID: usize = 1;
-/// 「脸扫雷」闪动用的一次性定时器
+/// 定时器
 const TIMER_FLASH: usize = 2;
 
 const IDM_NEW: usize = 100;
@@ -44,7 +44,7 @@ const C_BLACK = w.rgb(0, 0, 0);
 const C_WHITE = w.rgb(0xFF, 0xFF, 0xFF);
 const C_DARKGRAY = w.rgb(0x40, 0x40, 0x40);
 
-// ------------------------------------------------------------------ 全局状态
+// 全局
 pub var game: g.Game = .{};
 var zoom: i32 = 2;
 var hwnd_main: w.HWND = null;
@@ -79,12 +79,12 @@ var dialog_cancel = false;
 var edit_handles: [6]w.HWND = .{ null, null, null, null, null, null };
 var dlg_err_hwnd: w.HWND = null;
 var dlg_font: w.HFONT = null;
-/// 对话框的统一底色（白）。对话框窗口、静态标签、编辑框都用它。
+/// 对话框
 var dlg_bg_brush: w.HBRUSH = null;
 var win_dc_scratch: w.HDC = null;
 var done_flag = false;
 
-// ------------------------------------------------------------------ 布局
+// 布局
 pub const Layout = struct {
     z: i32,
     frame: i32,
@@ -103,13 +103,11 @@ pub const Layout = struct {
     header_w: i32,
 };
 
-/// 数值区固定几格：实雷与计时器是**四格**（第四格也是数字），
-/// 虚雷是三格（第四格留给那一格 `i` 单位）。两者相加都是四格，所以五块面板等宽。
+/// 虚雷第四格是i
 const REAL_DIGITS: i32 = 4;
 const IMAG_DIGITS: i32 = 3;
 
-/// 数值区实际占几格：负数要占掉一格画负号（于是只剩 base−1 位数字），
-/// 数值超出这个范围才再加一格。v = null（还没开局）就按 base 画空格子。
+/// 数值超出这个范围加一格
 fn valueDigits(base: i32, v: ?i32) i32 {
     if (v == null) return base;
     const x = v.?;

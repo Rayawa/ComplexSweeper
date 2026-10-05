@@ -1,4 +1,4 @@
-// 复扫雷 · 规则与状态。这一层不碰任何 Win32，方便单独自检。
+// 复扫雷 · 规则与状态（不碰 Win32，可单独自检）
 const std = @import("std");
 
 pub const MAX_W: usize = 40;
@@ -6,20 +6,20 @@ pub const MAX_H: usize = 30;
 pub const MAX_CELLS: usize = MAX_W * MAX_H;
 pub const MAX_MINES: usize = 999;
 
-/// 四种雷：(a,b) 分别是实部与虚部的贡献
+/// 四种雷：(实部, 虚部)
 pub const TYPES = [4][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
-/// 只可能出现的 24 个显示值 D = |S|^2
+/// 24 个可能的显示值
 pub const ACHIEVABLE = [24]u16{ 0, 1, 2, 4, 5, 8, 9, 10, 13, 16, 17, 18, 20, 25, 26, 29, 32, 34, 36, 37, 40, 49, 50, 64 };
 
 pub const Preset = struct { w: u16, h: u16, mines: u16, label: []const u8 };
-/// 标准三档（类型随机撒）
+/// 标准三档
 pub const PRESETS = [3]Preset{
     .{ .w = 9, .h = 9, .mines = 10, .label = "初级 9×9 · 10 雷" },
     .{ .w = 16, .h = 16, .mines = 40, .label = "中级 16×16 · 40 雷" },
     .{ .w = 30, .h = 16, .mines = 99, .label = "高级 30×16 · 99 雷" },
 };
 
-/// 状态行文字（逻辑层只给枚举，文案在界面层）
+/// 上一次操作的反馈（文案在界面层）
 pub const Msg = enum(u8) {
     none = 0,
     started,
@@ -29,7 +29,7 @@ pub const Msg = enum(u8) {
     lose,
 };
 
-/// mulberry32：与 demo/archive.js 完全一致，同种子同棋盘
+/// mulberry32：与 demo 版一致，同种子同棋盘
 pub const Rng = struct {
     a: u32,
     pub fn init(seed: u32) Rng {
@@ -42,7 +42,6 @@ pub const Rng = struct {
         t ^= t +% ((t ^ (t >> 7)) *% (t | 61));
         return @as(f64, @floatFromInt((t ^ (t >> 14)))) / 4294967296.0;
     }
-    /// [0, n) 的整数
     pub fn below(self: *Rng, n: usize) usize {
         if (n == 0) return 0;
         return @intFromFloat(self.next() * @as(f64, @floatFromInt(n)));
@@ -60,11 +59,10 @@ pub const Game = struct {
     seed: u32 = 1,
     rng: Rng = Rng.init(1),
     mines: u16 = 10,
-    /// 各类雷的总数（下标 1..4），开局公开
+/// 各类雷总数（下标 1..4），开局公开
     type_total: [5]u16 = [_]u16{0} ** 5,
-    /// 当前插了各类旗几面
     flags_of: [5]u16 = [_]u16{0} ** 5,
-    /// 自定义配比（下标 1..4）；全 0 表示"类型随机撒"
+/// 自定义配比（下标 1..4）；全 0 = 类型随机撒
     type_count: [5]u16 = [_]u16{0} ** 5,
     started: bool = false,
     over: bool = false,
@@ -74,9 +72,7 @@ pub const Game = struct {
     elapsed_ms: u32 = 0,
     t0: u32 = 0,
     moves: u32 = 0,
-    /// 上一次操作的反馈（文案在界面层）
     msg: Msg = .none,
-    /// 附加数字（例如展开格数），0 表示无
     msg_arg: u16 = 0,
 
     pub fn cellCount(self: *const Game) usize {
@@ -87,7 +83,7 @@ pub const Game = struct {
         return r >= 0 and c >= 0 and r < self.h and c < self.w;
     }
 
-    /// 8 邻域，写到 buf 里，返回个数
+/// 8 邻域写到 buf，返回个数
     pub fn nbrs(self: *const Game, cell: usize, buf: *[8]usize) usize {
         const w: i32 = self.w;
         const r: i32 = @intCast(cell / self.w);
@@ -118,7 +114,7 @@ pub const Game = struct {
         return n;
     }
 
-    /// 空白格：邻域一颗雷都没有。只有它会连片展开
+/// 空白格：邻域无雷；只有它连片展开
     pub fn isBlank(self: *const Game, cell: usize) bool {
         return self.mine[cell] == 0 and self.nbrMineCount(cell) == 0;
     }
@@ -129,7 +125,7 @@ pub const Game = struct {
         return s;
     }
 
-    /// 该类雷还有几颗没标（可以是负数）
+/// 该类雷还剩几颗没标（可为负）
     pub fn unmarked(self: *const Game, t: usize) i32 {
         return @as(i32, self.type_total[t]) - @as(i32, self.flags_of[t]);
     }
@@ -139,13 +135,12 @@ pub const Game = struct {
         self.msg_arg = 0;
     }
 
-    // ---------------------------------------------------------------- 生成
     pub fn setSeed(self: *Game, s: u32) void {
         self.seed = if (s == 0) 1 else s;
         self.rng = Rng.init(self.seed);
     }
 
-    /// 新开一局（未开局状态，棋盘等第一次点击时再生成）
+/// 新开一局（棋盘等第一次点击再生成）
     pub fn newGame(self: *Game, seed: u32) void {
         self.n = @as(usize, self.w) * @as(usize, self.h);
         for (0..self.n) |i| {
@@ -168,15 +163,13 @@ pub const Game = struct {
         self.setMsg(.none);
     }
 
-    /// 布雷 + 算显示值 + 从开局格连片。safe = 开局格及其（界内）8 邻居。
+/// 布雷 + 算显示值 + 从开局格连片
     pub fn genBoard(self: *Game, start_cell: usize) void {
         const N = self.n;
         for (0..N) |i| {
             self.mine[i] = 0;
             self.clue[i] = -1;
             self.open[i] = 0;
-            // 注意：这里**不动 flag[]**。开局前插的旗要活过第一次左键
-            // （传统扫雷就是这样）；清旗由 newGame() 负责，那里 flag 与 flags_of 一起归零。
         }
         var is_safe = [_]bool{false} ** MAX_CELLS;
         is_safe[start_cell] = true;
@@ -192,7 +185,7 @@ pub const Game = struct {
                 m += 1;
             }
         }
-        // 洗位置
+// 洗位置
         if (m > 1) {
             var i: usize = m - 1;
             while (i > 0) : (i -= 1) {
@@ -207,7 +200,7 @@ pub const Game = struct {
         const count = @min(if (want > 0) want else @as(usize, self.mines), m);
 
         if (want > 0) {
-            // 精确配比：先铺类型序列，再洗一遍
+// 精确配比：先铺类型序列，再洗一遍
             var list: [MAX_CELLS]u8 = undefined;
             var ln: usize = 0;
             for (1..5) |t| {
@@ -234,7 +227,6 @@ pub const Game = struct {
         self.mines = @intCast(count);
         self.computeClues();
         self.countTypes();
-        // 这里既不碰 flag[] 也不碰 flags_of：开局前插的旗（以及它的计数）要留到开局之后。
         _ = self.cascadeOpen(&[_]usize{start_cell});
     }
 
@@ -249,8 +241,7 @@ pub const Game = struct {
             var buf: [8]usize = undefined;
             const k = self.nbrs(i, &buf);
             for (buf[0..k]) |j| {
-                // 必须跳过空邻居：mine[j]==0 时 TYPES[mine[j]-1] 会越界读到垃圾，
-                // 把显示值算错（这个 bug 一度因为越界正好读到 0 而"看起来正常"）
+// 必须跳过空邻居，否则 TYPES[mine[j]-1] 越界
                 if (self.mine[j] == 0) continue;
                 const t = TYPES[self.mine[j] - 1];
                 a += t[0];
@@ -267,12 +258,7 @@ pub const Game = struct {
         }
     }
 
-    /// 连片翻开：只在空白格上继续扩散。返回新翻开的格数。
-    ///
-    /// `queued` 标记已经进过栈的格子。同一格会被相邻的多个空白格重复压栈：一个
-    /// 40×30 的大空白区就能把 [MAX_CELLS] 的栈塞满，栈满时只能丢掉这次压栈，于是
-    /// 留下本该翻开的格子（自定义盘上一次能漏几百格）。查重之后每格最多进栈一次，
-    /// 栈内元素不会多于格数，也就塞不满。
+/// 连片翻开：只在空白格上扩散，返回新翻开的格数
     pub fn cascadeOpen(self: *Game, seeds: []const usize) usize {
         var stack: [MAX_CELLS]usize = undefined;
         var queued = [_]bool{false} ** MAX_CELLS;
@@ -288,7 +274,7 @@ pub const Game = struct {
         while (sp > 0) {
             sp -= 1;
             const i = stack[sp];
-            // 连片也不碰插了旗的格子（传统扫雷：旗子保护它，得玩家自己撤旗）
+// 插了旗的格子，连片也绕开
             if (self.open[i] != 0 or self.mine[i] != 0 or self.flag[i] != 0) continue;
             self.open[i] = 1;
             opened += 1;
@@ -296,8 +282,7 @@ pub const Game = struct {
                 var buf: [8]usize = undefined;
                 const k = self.nbrs(i, &buf);
                 for (buf[0..k]) |j| {
-                    // 查重必须标在**压栈时**。改成弹出时才标，同一个格子会被相邻的
-                    // 多个空白格重复压进去，栈照样能塞满。
+// 查重标在压栈时
                     if (!queued[j] and self.open[j] == 0 and self.mine[j] == 0 and self.flag[j] == 0) {
                         queued[j] = true;
                         std.debug.assert(sp < stack.len);
@@ -310,7 +295,6 @@ pub const Game = struct {
         return opened;
     }
 
-    // ---------------------------------------------------------------- 操作
     pub fn startAt(self: *Game, cell: usize, now_ms: u32) void {
         self.setSeed(self.seed);
         self.genBoard(cell);
@@ -324,7 +308,7 @@ pub const Game = struct {
         self.setMsg(.none);
     }
 
-    /// 插/改/清旗。旗帜不限量，永远成功
+/// 插 / 改 / 清旗（不限量）
     pub fn setFlag(self: *Game, cell: usize, t: u8) bool {
         if (t > 4) return false;
         const old = self.flag[cell];
@@ -335,7 +319,7 @@ pub const Game = struct {
         return true;
     }
 
-    /// 右键循环：空 → +1 → −1 → +i → −i → 空
+/// 右键循环：空 → +1 → −1 → +i → −i → 空
     pub fn cycleFlag(self: *Game, cell: usize) bool {
         if (self.over or self.open[cell] != 0) return false;
         const next: u8 = @intCast((@as(usize, self.flag[cell]) + 1) % 5);
@@ -344,7 +328,7 @@ pub const Game = struct {
         return true;
     }
 
-    /// 翻开一格。**插了旗的格子翻不开**（传统扫雷：旗子保护它）——要翻开得先用右键把旗循环回"空"。
+/// 翻开一格；插了旗的翻不开
     pub fn reveal(self: *Game, cell: usize, now_ms: u32) void {
         _ = now_ms;
         if (self.over or self.open[cell] != 0 or self.flag[cell] != 0) return;
@@ -363,8 +347,7 @@ pub const Game = struct {
         self.checkWin();
     }
 
-    /// 组合匹配（严档，现行默认）：旗帜总数 = 邻域真实雷总数，且实/虚旗数
-    /// 与真实实/虚雷数一致（顺序不限）
+/// 判据：旗帜数 = 邻域真实雷数，且实虚比例相符
     pub fn matchComboTruth(self: *const Game, cell: usize) bool {
         var truth = [4]u16{ 0, 0, 0, 0 };
         var got = [4]u16{ 0, 0, 0, 0 };
@@ -381,7 +364,7 @@ pub const Game = struct {
         return (gp + gv == P + V) and ((gp == P and gv == V) or (gp == V and gv == P));
     }
 
-    /// 双击展开：判据通过就翻开周围未插旗的格（可能踩雷）
+/// 展开：判据过了就翻开周围未插旗的格
     pub fn tryExpand(self: *Game, cell: usize) void {
         if (self.over or self.open[cell] == 0 or self.mine[cell] != 0) return;
         var buf: [8]usize = undefined;
@@ -459,7 +442,7 @@ pub const Game = struct {
         return k;
     }
 
-    /// 精确定义下的合法配比（供自检用）：各类雷数之和 = 总雷数
+/// 合法配比（自检用）
     pub fn typeSum(self: *const Game) usize {
         var s: usize = 0;
         for (1..5) |t| s += self.type_total[t];
@@ -467,7 +450,7 @@ pub const Game = struct {
     }
 };
 
-/// 把总数尽量均匀分给四种雷（自定义对话框的预填值）
+/// 把总雷数尽量均分给四种雷
 pub fn splitEvenly(total: u16) [5]u16 {
     var out = [_]u16{0} ** 5;
     const base = total / 4;

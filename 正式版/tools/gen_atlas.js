@@ -242,7 +242,7 @@ lines.push('};');
 lines.push('');
 
 /* 每种雷（1..4）在各模式下的贴图。1/2 是两种实雷，两个模式共用；
-   3/4 在复数模式是 ±虚雷、在双曲模式是 ±j 雷，各画各的（h 前缀 = 双曲专用）。
+   3/4 在复数模式是 ±虚雷、在双曲模式是 ±双曲雷，各画各的（h 前缀 = 双曲专用）。
    判定那几张（标对/标错）还没画全的，先退回已有贴图，画好丢进图集就自动接上。 */
 const T4 = [1, 2, 3, 4];
 const has = (n) => seen.has(n);
@@ -263,7 +263,7 @@ for (const f of FAMILIES) {
     slots.forEach((s, k) => { if (s && f.fb && list[k] !== s && !has(list[k])) usingFallback.push(list[k]); });
     const missing = slots.some((s) => !s);
     if (missing) throw new Error(`${f.why}贴图缺得太多（${prefix}${f.name}_*），图集里连可退回的都没有`);
-    lines.push(`/// ${f.why}：下标是雷的类型（1 正实 / 2 负实 / 3 正虚·正 j / 4 负虚·负 j），0 空着`);
+    lines.push(`/// ${f.why}：下标是雷的类型（1 正实雷 / 2 负实雷 / 3 正虚雷·正双曲雷 / 4 负虚雷·负双曲雷），0 空着`);
     lines.push(`pub const ${prefix}${f.name}_T = [5]u16{ 0, ${slots.join(', ')} };`);
   }
 }

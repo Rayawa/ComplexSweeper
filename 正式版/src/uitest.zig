@@ -964,11 +964,11 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             expect(out, std.mem.indexOf(u8, help, "【复数模式】") != null, "玩法里应有「【复数模式】」这一段");
             expect(out, std.mem.indexOf(u8, help, "【双曲复数模式】") != null, "玩法里应有「【双曲复数模式】」这一段");
             expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "复数模式那段的四种雷应按雷的名字列");
-            expect(out, std.mem.indexOf(u8, help, "正 j 雷、负 j 雷") != null, "双曲模式那段应写正 j 雷、负 j 雷");
+            expect(out, std.mem.indexOf(u8, help, "正双曲雷、负双曲雷") != null, "双曲模式那段应写正双曲雷、负双曲雷");
             expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "复数模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "实部与 j 部的绝对值分别与真实相符") != null, "双曲模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "实部平方 − j 部平方") != null, "双曲模式要说清被开方数怎么算");
-            expect(out, std.mem.indexOf(u8, help, "旗帜顺序为正实旗、负实旗、正 j 旗、负 j 旗") != null, "双曲模式的旗帜顺序应是 j 旗");
+            expect(out, std.mem.indexOf(u8, help, "旗帜顺序为正实旗、负实旗、正双曲旗、负双曲旗") != null, "双曲模式的旗帜顺序应是双曲旗");
             out.writer().print("14d 玩法与操作：一篇文案含两个模式的规则 通过\n", .{}) catch {};
         }
 // 14e 纪录分模式 + 双曲局照样记账
@@ -1012,7 +1012,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         }.go;
         setup(gm);
         _ = gm.nbrs(12, &nbuf);
-        gm.mine[nbuf[0]] = 3;   // 正虚雷（双曲模式下就是正 j 雷）
+        gm.mine[nbuf[0]] = 3;   // 正虚雷（双曲模式下就是正双曲雷）
         gm.mine[nbuf[1]] = 1;   // 正实雷
         gm.mine[nbuf[2]] = 2;   // 负实雷
         gm.computeClues();
@@ -1049,8 +1049,8 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
 // 15c 双曲模式：3/4 两种雷换成 j 系列贴图
         gm.mode = .hyper;
         expect(out, ui.testSprite(S.mine, true, 1) == ui.testSprite(S.mine, false, 1), "双曲模式的实雷与复数模式共用贴图");
-        expect(out, ui.testSprite(S.mine, true, 3) != ui.testSprite(S.mine, false, 3), "双曲模式的 j 雷要换成 j 自己的贴图");
-        expect(out, ui.testSprite(S.flag, true, 3) != ui.testSprite(S.flag, false, 3), "双曲模式的 j 旗要换成 j 自己的贴图");
+        expect(out, ui.testSprite(S.mine, true, 3) != ui.testSprite(S.mine, false, 3), "双曲模式的双曲雷要换成它自己的贴图");
+        expect(out, ui.testSprite(S.flag, true, 3) != ui.testSprite(S.flag, false, 3), "双曲模式的双曲旗要换成它自己的贴图");
         setup(gm);
         gm.mode = .hyper;
         _ = gm.nbrs(12, &nbuf);
@@ -1066,7 +1066,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, ui.testCellSprite(nbuf[1]) == ui.testClosedSprite, "双曲模式中途：没插旗的格子仍是闭格");
         gm.boom = @intCast(nbuf[2]);
         gm.open[nbuf[2]] = 1;
-        expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.boom, true, 4), "双曲模式踩中的 j 雷要用 j 版踩中贴图");
+        expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.boom, true, 4), "双曲模式踩中的双曲雷要用它自己的踩中贴图");
         expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.boom, false, 4), "双曲模式踩中贴图不能沿用复数模式的");
         gm.mode = .complex;
         gm.boom = -1;

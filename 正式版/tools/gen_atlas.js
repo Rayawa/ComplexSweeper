@@ -220,6 +220,42 @@ for (const v of HYPER_VALUES) lines.push('    t[' + (v.D + 64) + '] = ' + hyperS
 lines.push('    break :blk t;');
 lines.push('};');
 lines.push('');
+
+/* 每种雷（1..4）在各模式下的贴图。1/2 是两种实雷，两个模式共用；
+   3/4 在复数模式是 ±虚雷、在双曲模式是 ±j 雷，各画各的（h 前缀 = 双曲专用）。
+   判定那几张（标对/标错）还没画全的，先退回已有贴图，画好丢进图集就自动接上。 */
+const T4 = [1, 2, 3, 4];
+const has = (n) => seen.has(n);
+const pickSlot = (...names) => names.find(has);
+const FAMILIES = [
+  { name: 'mine', c: ['mine_1', 'mine_2', 'mine_3', 'mine_4'], h: ['mine_1', 'mine_2', 'hmine_3', 'hmine_4'], why: '雷' },
+  { name: 'flag', c: ['flag_1', 'flag_2', 'flag_3', 'flag_4'], h: ['flag_1', 'flag_2', 'hflag_3', 'hflag_4'], why: '旗' },
+  { name: 'boom', c: ['boom_1', 'boom_2', 'boom_3', 'boom_4'], h: ['boom_1', 'boom_2', 'hboom_3', 'hboom_4'], why: '踩中雷' },
+  { name: 'wrong', c: ['wrong_1', 'wrong_2', 'wrong_3', 'wrong_4'], h: ['wrong_1', 'wrong_2', 'hwrong_3', 'hwrong_4'], why: '标错雷' },
+  { name: 'right', c: ['right_1', 'right_2', 'right_3', 'right_4'], h: ['right_1', 'right_2', 'hright_3', 'hright_4'], why: '标对雷' },
+  { name: 'rightflag', c: ['rightflag_1', 'rightflag_2', 'rightflag_3', 'rightflag_4'], h: ['rightflag_1', 'rightflag_2', 'hrightflag_3', 'hrightflag_4'], fb: ['flag_1', 'flag_2', 'flag_3', 'flag_4'], why: '标对旗' },
+  { name: 'wrongflag', c: ['wrongflag_1', 'wrongflag_2', 'wrongflag_3', 'wrongflag_4'], h: ['wrongflag_1', 'wrongflag_2', 'hwrongflag_3', 'hwrongflag_4'], fb: ['wrong_1', 'wrong_2', 'wrong_3', 'wrong_4'], why: '标错旗' },
+];
+const usingFallback = [];   // 还没画、先退回上一档的那些"槽位名"（就是作者要补的清单）
+for (const f of FAMILIES) {
+  for (const [prefix, list] of [['', f.c], ['h', f.h]]) {
+    const slots = T4.map((t, k) => pickSlot(list[k], f.fb && f.fb[k]));
+    slots.forEach((s, k) => { if (s && f.fb && list[k] !== s && !has(list[k])) usingFallback.push(list[k]); });
+    const missing = slots.some((s) => !s);
+    if (missing) throw new Error(`${f.why}贴图缺得太多（${prefix}${f.name}_*），图集里连可退回的都没有`);
+    lines.push(`/// ${f.why}：下标是雷的类型（1 正实 / 2 负实 / 3 正虚·正 j / 4 负虚·负 j），0 空着`);
+    lines.push(`pub const ${prefix}${f.name}_T = [5]u16{ 0, ${slots.join(', ')} };`);
+  }
+}
+lines.push('');
+const wb = pickSlot('wrongblank', 'blank');
+lines.push('/// 标错空格子：给不是雷的格子插了旗，失败后显示它（画好之前先退回空白格）');
+lines.push('pub const wrongblank_sprite: u16 = ' + wb + ';');
+lines.push('');
+if (usingFallback.length) {
+  const uniq = [...new Set(usingFallback)];
+  console.log(`判定贴图还没画（先退回上一档）：${uniq.join(' ')} —— 画好丢进图集就自动接上`);
+}
 fs.mkdirSync(path.dirname(zigPath), { recursive: true });
 fs.writeFileSync(zigPath, lines.join('\n') + '\n');
 

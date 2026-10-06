@@ -1,4 +1,4 @@
-/* 双曲复数模式（j² = +1）的 39 个显示值，以及每个值对应的贴图槽位名。
+/* 闵可夫斯基模式（j² = +1）的 39 个显示值，以及每个值对应的贴图槽位名。
    约束 |a| + |b| ≤ 8（8 邻域最多八颗雷），显示值 D = a² − b²，取值 −64 … 64。
    负数（D < 0）按规则显示成"根式 + i 单位"：−4 → 2i、−7 → √7i。
 
@@ -33,6 +33,6 @@ const VALUES = (() => {
   });
 })();
 
-if (VALUES.length !== 39) throw new Error('双曲模式的显示值应是 39 个，实得 ' + VALUES.length);
+if (VALUES.length !== 39) throw new Error('闵可夫斯基模式的显示值应是 39 个，实得 ' + VALUES.length);
 
 module.exports = { VALUES, HYPER_Ds: VALUES.map((v) => v.D), radicalText };

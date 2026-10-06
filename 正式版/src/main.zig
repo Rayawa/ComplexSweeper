@@ -19,12 +19,12 @@ const IDM_INTERMEDIATE: usize = 102;
 const IDM_EXPERT: usize = 103;
 const IDM_CUSTOM: usize = 104;
 const IDM_EXIT: usize = 105;
-/// 双曲复数模式的同一批命令（两个模式各占一段命令号，菜单里是两个并列的子菜单）
+/// 闵可夫斯基模式的同一批命令（两个模式各占一段命令号，菜单里是两个并列的子菜单）
 const IDM_HYPER_BEGINNER: usize = 120;
 const IDM_HYPER_INTERMEDIATE: usize = 121;
 const IDM_HYPER_EXPERT: usize = 122;
 const IDM_HYPER_CUSTOM: usize = 123;
-/// 双曲模式的那份最高分纪录（两个模式各记一套，所以菜单里也是两条）
+/// 闵可夫斯基模式的那份最高分纪录（两个模式各记一套，所以菜单里也是两条）
 const IDM_HYPER_BEST: usize = 124;
 const IDM_ZOOM1: usize = 110;
 const IDM_ZOOM2: usize = 111;
@@ -54,7 +54,7 @@ const C_DARKGRAY = w.rgb(0x40, 0x40, 0x40);
 // 全局
 pub var game: g.Game = .{};
 var zoom: i32 = 2;
-/// 当前是不是双曲复数模式。模式是"设置"而不是"局面"，所以存在 game.mode 里，
+/// 当前是不是闵可夫斯基模式。模式是"设置"而不是"局面"，所以存在 game.mode 里，
 /// 新开一局、换难度都不会把它弄丢；菜单圆点、贴图查表、计雷器单位全靠它分派。
 fn hyper() bool {
     return game.mode == .hyper;
@@ -463,7 +463,7 @@ fn paint(dc: w.HDC, L: Layout) void {
         const led_y = cy + @divTrunc(26 * L.z - 23 * L.z, 2);
         const vw = drawLed(dc, led_x, led_y, val, panelValueDigits(imag, val), L.z);
         // 单位雷还有第四格单位记号（没开局时那一格也画成空格子，不留白）：
-        // 复数模式是 i，双曲模式是 j
+        // 复数模式是 i，闵可夫斯基模式是 j
         if (imag) blitSprite(dc, if (val == null) A.led_blank else if (hyper()) A.led_j else A.led_i, led_x + vw, led_y, 13 * L.z, 23 * L.z);
         cy += 26 * L.z + 2 * L.z;
     }
@@ -496,8 +496,8 @@ fn paint(dc: w.HDC, L: Layout) void {
     // 没有状态行：原版扫雷底部就是空的（判据不通过时不作任何提示，只留状态枚举给自检）
 }
 
-/// 贴图按"雷的类型"查表（1 正实雷 / 2 负实雷 / 3 正虚雷·正双曲雷 / 4 负虚雷·负双曲雷）。
-/// 1、2 两种实雷两个模式共用；3、4 在双曲模式下换成 h 前缀那几张（±j 的画法不同）。
+/// 贴图按"雷的类型"查表（1 正实雷 / 2 负实雷 / 3 正虚雷·正类空雷 / 4 负虚雷·负类空雷）。
+/// 1、2 两种实雷两个模式共用；3、4 在闵可夫斯基模式下换成 h 前缀那几张（±j 的画法不同）。
 /// 表由 tools/gen_atlas.js 生成，缺哪张会自动退回上一档，见 src/assets.zig。
 fn mineSprite(t: u8) u16 {
     return (if (hyper()) A.hmine_T else A.mine_T)[@min(@as(usize, t), 4)];
@@ -565,7 +565,7 @@ fn cellSprite(i: usize) u16 {
         }
         const D = game.clue[i];
         if (D == 0 and game.nbrMineCount(i) == 0) return A.blank;
-        // 两个模式各查各的表：复数模式 a²+b²（0…64），双曲模式 a²−b²（−64…64，下标 +64）
+        // 两个模式各查各的表：复数模式 a²+b²（0…64），闵可夫斯基模式 a²−b²（−64…64，下标 +64）
         const s = if (hyper())
             A.hnum_by_D[@intCast(D + 64)]
         else
@@ -638,7 +638,7 @@ fn repaint(hwnd: w.HWND) void {
 /// 窗口标题固定不变（难度、局面信息都不往标题里塞）
 const APP_TITLE = "复扫雷 Complexweeper";
 /// 版本号：**只有这一处**。以后每次改动都顺手把它 +1，关于对话框与两个自检报告的抬头都读它。
-const APP_VERSION = "1.1.3";
+const APP_VERSION = "1.1.4";
 
 // ------------------------------------------------------------------ 棋盘交互
 fn cellAt(L: Layout, px: i32, py: i32) i32 {
@@ -921,9 +921,9 @@ fn createCustomWindow() bool {
     _ = label(dialog_hwnd, hinst, 156, y + 3, 150, 18, font, w.wstr("9 – 40 列"));
     y += 34;
 
-    // 四种雷的名字随模式：双曲模式下 3/4 是双曲雷，不叫虚雷
+    // 四种雷的名字随模式：闵可夫斯基模式下 3/4 是闵可夫斯基雷，不叫虚雷
     const names = if (hyper())
-        [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正双曲雷："), w.wstr("负双曲雷：") }
+        [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正类空雷："), w.wstr("负类空雷：") }
     else
         [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正虚雷："), w.wstr("负虚雷：") };
     var k: usize = 0;
@@ -979,7 +979,7 @@ fn runCustomDialog() bool {
 // 和原版扫雷一样用注册表，所以分发仍然只有一个 exe、不会多出存档文件。
 // 自定义棋盘不计入（尺寸/雷数任意，比时间没有意义）。
 const REG_PATH = "Software\\Complexweeper";
-/// 纪录键名按模式分开：复数模式沿用原来那三个键（老纪录还在），双曲模式另起一套。
+/// 纪录键名按模式分开：复数模式沿用原来那三个键（老纪录还在），闵可夫斯基模式另起一套。
 /// 两个模式的难度档位虽然同名同尺寸，但盘面数值规则不同，混在一张表里比时间没有意义。
 const SCORE_VALUES_CPLX = [3][*:0]const u16{ w.wstr("Beginner"), w.wstr("Intermediate"), w.wstr("Expert") };
 const SCORE_VALUES_HYPER = [3][*:0]const u16{ w.wstr("HyperBeginner"), w.wstr("HyperIntermediate"), w.wstr("HyperExpert") };
@@ -1100,7 +1100,7 @@ fn showBestScores(highlight: bool, m: g.Mode) void {
     var tb: [64]u16 = undefined;
     var k: usize = 0;
     appendW(&tb, &k, if (highlight) w.wstr("新纪录！") else w.wstr("最高分纪录"));
-    appendW(&tb, &k, if (m == .hyper) w.wstr(" · 双曲复数模式") else w.wstr(" · 复数模式"));
+    appendW(&tb, &k, if (m == .hyper) w.wstr(" · 闵可夫斯基模式") else w.wstr(" · 复数模式"));
     tb[k] = 0;
     _ = w.MessageBoxW(hwnd_main, @ptrCast(&buf), @ptrCast(&tb), w.MB.OK | w.MB.ICONINFORMATION);
 }
@@ -1451,10 +1451,11 @@ const HELP_TEXT = "雷区里有四种雷。\r\n" ++
     "数字代表该格周围所有雷的加和之模长，均被写为整数或最简根式。\r\n" ++
     "当旗帜数量等于周围真实雷数，且实虚比例符合真实比例或其倒数的时候，可以展开。\r\n" ++
     "\r\n" ++
-    "双曲复数模式：\r\n" ++
-    "四种雷分别是正实雷、负实雷、正双曲雷、负双曲雷。\r\n" ++
-    "定义双曲虚数单位j²=1，形式模长S=√(a²-b²)，所以，可以出现虚数。\r\n" ++
-    "数字是该格周围所有雷之加和的形式模长，均被写为整数或最简根式。\r\n" ++
+    "闵可夫斯基模式：\r\n" ++
+    "四种雷分别是正实雷、负实雷、正类空雷、负类空雷。\r\n" ++
+    "定义单位j²=1，时空间隔S=√(a²-b²)，所以，可以出现虚数。\r\n" ++
+    "（本模式只是从闵可夫斯基时空度规得来的灵感，跟广义相对论没有多大关系。）\r\n" ++
+    "数字是该格周围所有雷之加和的时空间隔，均被写为整数或最简根式。\r\n" ++
     "当旗帜数量等于周围真实雷数，且实、j部的数量等于真实数量时，可以展开。";
 
 fn showHelp() void {
@@ -1485,7 +1486,7 @@ fn buildMenu() w.HMENU {
     _ = w.AppendMenuW(hyper_menu, w.MF.SEPARATOR, 0, null);
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_BEST, w.wstr("最高分纪录(&R)…"));
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_CUSTOM, w.wstr("自定义雷区(&C)…"));
-    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(hyper_menu), w.wstr("双曲复数模式(&H)"));
+    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(hyper_menu), w.wstr("闵可夫斯基模式(&M)"));
 
     _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_ZOOM1, w.wstr("缩放 100%"));
@@ -1503,7 +1504,7 @@ fn buildMenu() w.HMENU {
     return bar;
 }
 
-/// 游戏菜单里两个模式子菜单的位置（只数游戏菜单自己的项目：开局、分隔线、复数模式、双曲复数模式…）
+/// 游戏菜单里两个模式子菜单的位置（只数游戏菜单自己的项目：开局、分隔线、复数模式、闵可夫斯基模式…）
 const MODE_MENU_INDEX = [2]i32{ 2, 3 };
 
 /// 菜单圆点：只有"当前模式 + 当前难度"那一项是选中态（另一个模式的同名档位不勾），
@@ -1827,7 +1828,7 @@ fn setupDemo() void {
             return;
         },
         .hyper => {
-            // 双曲复数模式的截图盘：中间开一片，边上一排旗（四种雷各几面），
+            // 闵可夫斯基模式的截图盘：中间开一片，边上一排旗（四种雷各几面），
             // 用来核对负数显示、i 单位、计雷器第四格的 j。
             game.mode = .hyper;
             game.w = 16;
@@ -2234,7 +2235,7 @@ pub const test_IDM_HYPER_CUSTOM = IDM_HYPER_CUSTOM;
 pub const test_IDM_HYPER_BEST = IDM_HYPER_BEST;
 pub const test_IDM_CUSTOM = IDM_CUSTOM;
 
-/// 当前是不是双曲复数模式
+/// 当前是不是闵可夫斯基模式
 pub fn testIsHyper() bool {
     return hyper();
 }
@@ -2242,13 +2243,13 @@ pub fn testIsHyper() bool {
 pub fn testPresetIndex() i32 {
     return cur_preset;
 }
-/// 计雷器第四格（单位格）现在用哪张贴图：复数模式 led_i，双曲模式 led_j
+/// 计雷器第四格（单位格）现在用哪张贴图：复数模式 led_i，闵可夫斯基模式 led_j
 pub fn testUnitSprite() u16 {
     return if (hyper()) A.led_j else A.led_i;
 }
 pub const testLedISprite = A.led_i;
 pub const testLedJSprite = A.led_j;
-/// 双曲模式的显示值 → 贴图（界面查的就是这张表）
+/// 闵可夫斯基模式的显示值 → 贴图（界面查的就是这张表）
 pub fn testHnumSprite(D: i32) u16 {
     return A.hnum_by_D[@intCast(D + 64)];
 }

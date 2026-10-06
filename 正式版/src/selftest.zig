@@ -63,7 +63,7 @@ fn buildBoard(game: *g.Game, n: u16, rows: u16, mines: u16, tc: [5]u16, seed: u3
     game.startAt(start, 0);
 }
 
-/// 双曲自检用：5×5 棋盘中央格（下标 12）周围正好 8 个邻居，按"四种雷的颗数"配比摆上去。
+/// 闵可夫斯基自检用：5×5 棋盘中央格（下标 12）周围正好 8 个邻居，按"四种雷的颗数"配比摆上去。
 /// as_flag = true 时摆的是旗帜（不重算显示值），否则摆真雷并重算。
 fn hyperPlace(game: *g.Game, counts: [4]u8, as_flag: bool) void {
     for (0..25) |i| {
@@ -485,11 +485,11 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         note(out, "10 展开门禁：通过\n", .{});
     }
 
-// ---- 11. 双曲复数模式：显示值集合、贴图覆盖、判据 ----
+// ---- 11. 闵可夫斯基模式：显示值集合、贴图覆盖、判据 ----
     {
 // 枚举 495 种邻域组合（四种雷的颗数 n1..n4，总数 ≤ 8）：两套显示值集合都算一遍。
 // 复数模式必须正好得到现有那 24 个值（模型与已发布实现的交叉验证），
-// 双曲模式必须正好得到 39 个值，且每个值在图集里都有贴图。
+// 闵可夫斯基模式必须正好得到 39 个值，且每个值在图集里都有贴图。
         var seen_c = [_]bool{false} ** 65;
         var seen_h = [_]bool{false} ** 129;
         var combos: u32 = 0;
@@ -520,7 +520,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             if (v) hn += 1;
         }
         expect(out, cn == g.ACHIEVABLE.len, "复数模式的显示值应为 24 个（与现有贴图一致）");
-        expect(out, hn == 39, "双曲模式的显示值应为 39 个");
+        expect(out, hn == 39, "闵可夫斯基模式的显示值应为 39 个");
         var cplx_bad: u32 = 0;
         for (g.ACHIEVABLE) |D| {
             if (!seen_c[D]) cplx_bad += 1;
@@ -532,7 +532,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         for (MAG) |m| {
             if (!seen_h[@intCast(m + 64)] or !seen_h[@intCast(-m + 64)]) pair_ok = false;
         }
-        expect(out, pair_ok, "双曲模式应是 19 个模长各带正负、外加一个 0");
+        expect(out, pair_ok, "闵可夫斯基模式应是 19 个模长各带正负、外加一个 0");
         var missing: u32 = 0;
         var used = [_]bool{false} ** 256;
         var dup: u32 = 0;
@@ -547,9 +547,9 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
                 used[s] = true;
             }
         }
-        expect(out, missing == 0, "双曲模式每个可能的显示值都必须有贴图（hnum_by_D 无空洞）");
+        expect(out, missing == 0, "闵可夫斯基模式每个可能的显示值都必须有贴图（hnum_by_D 无空洞）");
         expect(out, dup == 0, "39 张贴图不该被两个显示值共用");
-        note(out, "11 双曲显示值集合与贴图覆盖：{s}（组合 {d} 种，双曲 {d} 值）\n", .{ if (missing == 0 and dup == 0 and hn == 39) "通过" else "有缺口", combos, hn });
+        note(out, "11 闵可夫斯基显示值集合与贴图覆盖：{s}（组合 {d} 种，闵可夫斯基 {d} 值）\n", .{ if (missing == 0 and dup == 0 and hn == 39) "通过" else "有缺口", combos, hn });
 
 // 显示值算法：a² − b²（复数模式是 a² + b²），负值照算，显示成根式加 i
         var h: g.Game = .{};
@@ -575,13 +575,13 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             const idx: usize = @intCast(c.want + 64);
             if (A.hnum_by_D[idx] == 0xFFFF) clue_bad += 1;
         }
-        expect(out, clue_bad == 0, "双曲显示值必须是 a² − b²（12 组配比逐一核对）");
+        expect(out, clue_bad == 0, "闵可夫斯基显示值必须是 a² − b²（12 组配比逐一核对）");
 // 同一个配比在复数模式下应得 a² + b²（这里 a=1、b=2）
         h.mode = .complex;
         hyperPlace(&h, .{ 2, 1, 3, 1 }, false);
         expect(out, h.clue[12] == 5, "同一配比在复数模式下应是 a² + b²（1+4=5）");
         h.mode = .hyper;
-        note(out, "11b 双曲显示值算法（a² − b²）：{s}\n", .{if (clue_bad == 0) "通过" else "有偏差"});
+        note(out, "11b 闵可夫斯基显示值算法（a² − b²）：{s}\n", .{if (clue_bad == 0) "通过" else "有偏差"});
 
 // 判据：真值 = 一颗 +1 加一颗 +j（a=1、b=1、共 2 颗，显示值 0）
         hyperPlace(&h, .{ 1, 0, 1, 0 }, false);
@@ -609,14 +609,14 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         h.boom = -1;
         h.msg = .none;
         h.tryExpand(12);
-        expect(out, h.msg == .expand_ok or h.win, "双曲模式判据通过后展开应报 expand_ok");
+        expect(out, h.msg == .expand_ok or h.win, "闵可夫斯基模式判据通过后展开应报 expand_ok");
         expect(out, h.boom < 0, "邻域里的雷都插了旗，展开不该踩雷");
         var opened_any = false;
         for (0..h.n) |i| {
             if (i != 12 and h.open[i] != 0) opened_any = true;
         }
         expect(out, opened_any, "判据通过后应真的翻开邻格");
-        note(out, "11c 双曲判据（推荐 / 备选两档）：通过\n", .{});
+        note(out, "11c 闵可夫斯基判据（推荐 / 备选两档）：通过\n", .{});
     }
 
 // ---- 12. 判定贴图表：不许有空洞，实雷两个模式共用 ----
@@ -643,7 +643,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
                 A.wrong_T[k] != A.hwrong_T[k] or A.right_T[k] != A.hright_T[k]) shared_ok = false;
         }
         expect(out, shared_ok, "1/2 两种实雷在两个模式下必须共用同一批贴图");
-        expect(out, A.hmine_T[3] != A.mine_T[3] and A.hflag_T[4] != A.flag_T[4], "3/4 在双曲模式下应换成 j 版贴图");
+        expect(out, A.hmine_T[3] != A.mine_T[3] and A.hflag_T[4] != A.flag_T[4], "3/4 在闵可夫斯基模式下应换成 j 版贴图");
         expect(out, A.wrongblank_sprite < A.count, "「标错空格子」应指向合法槽位");
         note(out, "12 判定贴图表：通过（实雷共用、j 版独立、无空洞）\n", .{});
     }

@@ -110,7 +110,7 @@ placed = meta.slots.map((s, i) => {
 for (const D of ACHIEVABLE) if (!seen.has('num_' + D)) throw new Error('整图里缺少 D=' + D + ' 的贴图（num_' + D + '）');
 const numCount = [...seen].filter(n => /^num_\d+$/.test(n)).length;
 if (numCount !== ACHIEVABLE.length) throw new Error('整图里的数字贴图数量不对：' + numCount);
-// 双曲模式的显示值：显示文本与复数模式不同的那 27 个各有一张自己的贴图（hnum_*）；
+// 闵可夫斯基模式的显示值：显示文本与复数模式不同的那 27 个各有一张自己的贴图（hnum_*）；
 // 文本相同的 12 个（0 1 2 √5 2√2 3 4 5 4√2 6 7 8）直接复用复数模式的 num_<D>，
 // 图集里不为它们另留槽位——少一份重复素材，也就少一处要同步的地方。
 const hyperSprite = new Map();   // D -> 贴图槽位名
@@ -120,13 +120,13 @@ for (const v of HYPER_VALUES) {
   } else if (v.D >= 0 && ACHIEVABLE.includes(v.D)) {
     hyperSprite.set(v.D, 'num_' + v.D);
   } else {
-    throw new Error(`整图里缺少双曲模式 ${v.D}（${v.text}）的贴图（${v.name}），也没有可复用的 num_*`);
+    throw new Error(`整图里缺少闵可夫斯基模式 ${v.D}（${v.text}）的贴图（${v.name}），也没有可复用的 num_*`);
   }
 }
 for (const n of ['led_i', 'led_j']) if (!seen.has(n)) throw new Error('整图里缺少计雷器单位贴图（' + n + '）');
 const reuseCount = [...hyperSprite.values()].filter((n) => n.startsWith('num_')).length;
 console.log(`素材来源：整图（图集.png + 图集.json，${placed.length} 个槽位，${W}×${H}）`);
-console.log(`双曲模式 39 个显示值：自带贴图 ${hyperSprite.size - reuseCount} 张 + 复用复数模式 ${reuseCount} 张`);
+console.log(`闵可夫斯基模式 39 个显示值：自带贴图 ${hyperSprite.size - reuseCount} 张 + 复用复数模式 ${reuseCount} 张`);
 
 // 占位图提醒：新增区的占位素材字色是紫红 160,0,160（见 文档/双曲复数模式.md）。真素材里不会出现它，
 // 所以哪一格还带着这个颜色，就是"还没画"。这里只提醒、不拦构建。
@@ -144,7 +144,7 @@ for (const [name, im] of placed.map((p) => [p.name, p.im])) {
 console.log(pending.length
   ? `还差 ${pending.length} 张是占位图（紫红 160,0,160）：${pending.join(' ')}\n` +
     '（计雷器的 led_j 是照 led_i 改的红色 j，不带紫红，所以不在上面这份名单里，要单独看）'
-  : '双曲模式的新增贴图已经全是真素材了 ✓（led_j 也确认一下：它是红色 j，不带紫红）');
+  : '闵可夫斯基模式的新增贴图已经全是真素材了 ✓（led_j 也确认一下：它是红色 j，不带紫红）');
 
 const pix = Buffer.alloc(W * H * 4);      // 0 = 透明黑
 // 计时/计数的 LED 素材里，"未点亮的段"是用 128,0,0 与黑交替点阵画出来的（半色调虚段）。
@@ -231,7 +231,7 @@ for (const D of ACHIEVABLE) lines.push('    t[' + D + '] = num_' + D + ';');
 lines.push('    break :blk t;');
 lines.push('};');
 lines.push('');
-lines.push('/// 显示值 D = a^2 - b^2（-64 … 64）-> 数字贴图（双曲复数模式）；');
+lines.push('/// 显示值 D = a^2 - b^2（-64 … 64）-> 数字贴图（闵可夫斯基模式）；');
 lines.push('/// 下标是 D + 64，表外为 0xFFFF（不该出现）。39 个值的来历见 tools/hyper_values.js，');
 lines.push('/// 其中显示文本与复数模式相同的 12 个直接指向 num_<D>（不重复出图）。');
 lines.push('pub const hnum_by_D = blk: {');
@@ -242,7 +242,7 @@ lines.push('};');
 lines.push('');
 
 /* 每种雷（1..4）在各模式下的贴图。1/2 是两种实雷，两个模式共用；
-   3/4 在复数模式是 ±虚雷、在双曲模式是 ±双曲雷，各画各的（h 前缀 = 双曲专用）。
+   3/4 在复数模式是 ±虚雷、在闵可夫斯基模式是 ±闵可夫斯基雷，各画各的（h 前缀 = 闵可夫斯基专用）。
    判定那几张（标对/标错）还没画全的，先退回已有贴图，画好丢进图集就自动接上。 */
 const T4 = [1, 2, 3, 4];
 const has = (n) => seen.has(n);
@@ -263,7 +263,7 @@ for (const f of FAMILIES) {
     slots.forEach((s, k) => { if (s && f.fb && list[k] !== s && !has(list[k])) usingFallback.push(list[k]); });
     const missing = slots.some((s) => !s);
     if (missing) throw new Error(`${f.why}贴图缺得太多（${prefix}${f.name}_*），图集里连可退回的都没有`);
-    lines.push(`/// ${f.why}：下标是雷的类型（1 正实雷 / 2 负实雷 / 3 正虚雷·正双曲雷 / 4 负虚雷·负双曲雷），0 空着`);
+    lines.push(`/// ${f.why}：下标是雷的类型（1 正实雷 / 2 负实雷 / 3 正虚雷·正类空雷 / 4 负虚雷·负类空雷），0 空着`);
     lines.push(`pub const ${prefix}${f.name}_T = [5]u16{ 0, ${slots.join(', ')} };`);
   }
 }

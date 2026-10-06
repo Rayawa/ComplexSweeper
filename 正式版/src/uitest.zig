@@ -127,7 +127,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         var hb: [1024]u8 = undefined;
         const help = u16ToUtf8(&hb, std.mem.span(ui.testHelpText));
         expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "四种雷仍按雷的名字列（正实雷…）");
-        expect(out, std.mem.indexOf(u8, help, "正双曲雷、负双曲雷") != null, "双曲模式那段应写正双曲雷、负双曲雷");
+        expect(out, std.mem.indexOf(u8, help, "正类空雷、负类空雷") != null, "闵可夫斯基模式那段应写正类空雷、负类空雷");
         expect(out, std.mem.indexOf(u8, help, "鼠标左键翻开格子，右键插旗") != null, "操作说明应在正文里");
         expect(out, std.mem.indexOf(u8, help, "点击人脸或者按F2 开局") != null, "开局方式应在正文里");
         expect(out, std.mem.indexOf(u8, help, "+1") == null and std.mem.indexOf(u8, help, "-1") == null, "玩法里不该出现 +1/−1 那套符号");
@@ -155,7 +155,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
     expect(out, ui.testMenuHasId(ui.test_IDM_HELP_ABOUT), "帮助菜单应有「关于」");
     expect(out, !ui.testMenuHasId(ui.test_IDM_HELP_TABLE_REMOVED), "「显示值对照表」应从菜单里删掉");
     expect(out, ui.testMenuHasId(ui.test_IDM_BEST), "复数模式子菜单里应有「最高分纪录」");
-    expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEST), "双曲复数模式子菜单里应有「最高分纪录」");
+    expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEST), "闵可夫斯基模式子菜单里应有「最高分纪录」");
     out.writer().print("2 缩放菜单：通过\n", .{}) catch {};
 
 // 3) 左键：按下预览、松开翻开
@@ -889,9 +889,9 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         out.writer().print("13 音效：六段内嵌 / tick 每整秒一下 / 四种踩雷按型 / 通关胜利音 通过\n", .{}) catch {};
     }
 
-// 14) 双曲复数模式：菜单结构 / 圆点 / 标题 / j 单位 / 贴图分派 / 帮助窗口两个选项卡
+// 14) 闵可夫斯基模式：菜单结构 / 圆点 / 标题 / j 单位 / 贴图分派 / 帮助窗口两个选项卡
     {
-// 14a 菜单结构：游戏菜单 = 开局、分隔线、复数模式▸、双曲复数模式▸、分隔线、纪录、分隔线、三个缩放、分隔线、退出
+// 14a 菜单结构：游戏菜单 = 开局、分隔线、复数模式▸、闵可夫斯基模式▸、分隔线、纪录、分隔线、三个缩放、分隔线、退出
         expect(out, ui.testPopupItemId(0, 0) == @as(i32, @intCast(ui.test_IDM_NEW)), "游戏菜单第一项应是开局");
         expect(out, ui.testPopupItemId(0, 1) == 0, "游戏菜单第二项应是分隔线（ID 0）");
         expect(out, ui.testPopupCount(0) == 10, "游戏菜单顶层应是 10 项（开局/分隔线/两个模式/分隔线/三个缩放/分隔线/退出）");
@@ -900,37 +900,37 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, ui.testSubItemId(0, 2, 3) == 0, "复数模式子菜单第四项应是分隔线（ID 0）");
         expect(out, ui.testSubItemId(0, 2, 4) == @as(i32, @intCast(ui.test_IDM_BEST)), "复数模式子菜单应有最高分纪录");
         expect(out, ui.testSubItemId(0, 2, 5) == @as(i32, @intCast(ui.test_IDM_CUSTOM)), "复数模式子菜单最后一项应是自定义雷区");
-        expect(out, ui.testSubItemId(0, 3, 0) == @as(i32, @intCast(ui.test_IDM_HYPER_BEGINNER)), "双曲复数模式子菜单第一项应是初级");
-        expect(out, ui.testSubItemId(0, 3, 2) == @as(i32, @intCast(ui.test_IDM_HYPER_EXPERT)), "双曲复数模式子菜单第三项应是高级");
-        expect(out, ui.testSubItemId(0, 3, 4) == @as(i32, @intCast(ui.test_IDM_HYPER_BEST)), "双曲复数模式子菜单应有最高分纪录");
-        expect(out, ui.testSubItemId(0, 3, 5) == @as(i32, @intCast(ui.test_IDM_HYPER_CUSTOM)), "双曲复数模式子菜单最后一项应是自定义雷区");
+        expect(out, ui.testSubItemId(0, 3, 0) == @as(i32, @intCast(ui.test_IDM_HYPER_BEGINNER)), "闵可夫斯基模式子菜单第一项应是初级");
+        expect(out, ui.testSubItemId(0, 3, 2) == @as(i32, @intCast(ui.test_IDM_HYPER_EXPERT)), "闵可夫斯基模式子菜单第三项应是高级");
+        expect(out, ui.testSubItemId(0, 3, 4) == @as(i32, @intCast(ui.test_IDM_HYPER_BEST)), "闵可夫斯基模式子菜单应有最高分纪录");
+        expect(out, ui.testSubItemId(0, 3, 5) == @as(i32, @intCast(ui.test_IDM_HYPER_CUSTOM)), "闵可夫斯基模式子菜单最后一项应是自定义雷区");
         var best_at_top = false;
         for (0..10) |k| {
             if (ui.testPopupItemId(0, @intCast(k)) == @as(i32, @intCast(ui.test_IDM_BEST))) best_at_top = true;
         }
         expect(out, !best_at_top, "最高分纪录不该再留在游戏菜单顶层（两条都在模式里）");
-        expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEGINNER), "菜单树里应能找到双曲初级");
-        expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_CUSTOM), "菜单树里应能找到双曲自定义");
+        expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEGINNER), "菜单树里应能找到闵可夫斯基初级");
+        expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_CUSTOM), "菜单树里应能找到闵可夫斯基自定义");
 
-// 14b 切到双曲复数模式初级：模式、棋盘、档位、标题、圆点、j 单位格
+// 14b 切到闵可夫斯基模式初级：模式、棋盘、档位、标题、圆点、j 单位格
         ui.testCommand(ui.test_IDM_HYPER_BEGINNER);
-        expect(out, ui.testIsHyper(), "应切到双曲复数模式");
+        expect(out, ui.testIsHyper(), "应切到闵可夫斯基模式");
         expect(out, ui.game_ptr.mode == .hyper, "游戏状态里的模式也该跟着切");
-        expect(out, ui.game_ptr.w == 9 and ui.game_ptr.h == 9 and ui.game_ptr.mines == 10, "双曲初级也应是 9×9/10");
+        expect(out, ui.game_ptr.w == 9 and ui.game_ptr.h == 9 and ui.game_ptr.mines == 10, "闵可夫斯基初级也应是 9×9/10");
         expect(out, ui.testPresetIndex() == 0, "当前档位应是初级");
         var tbh: [256]u8 = undefined;
         const htitle = u16ToUtf8(&tbh, ui.testWindowTitle());
-        expect(out, std.mem.eql(u16, ui.testWindowTitle(), std.mem.span(ui.testAppTitle)), "双曲模式下标题也该原样（不多挂模式说明）");
+        expect(out, std.mem.eql(u16, ui.testWindowTitle(), std.mem.span(ui.testAppTitle)), "闵可夫斯基模式下标题也该原样（不多挂模式说明）");
         expect(out, std.mem.indexOf(u8, htitle, "复扫雷 Complexweeper") != null, "标题里应保留程序名");
-        expect(out, std.mem.indexOf(u8, htitle, "双曲") == null, "标题里不该出现模式说明");
-        expect(out, ui.testSubItemChecked(0, 3, 0), "双曲模式的初级应打上圆点");
-        expect(out, !ui.testSubItemChecked(0, 3, 1), "双曲模式的中级不该有圆点");
+        expect(out, std.mem.indexOf(u8, htitle, "闵可夫斯基") == null, "标题里不该出现模式说明");
+        expect(out, ui.testSubItemChecked(0, 3, 0), "闵可夫斯基模式的初级应打上圆点");
+        expect(out, !ui.testSubItemChecked(0, 3, 1), "闵可夫斯基模式的中级不该有圆点");
         expect(out, !ui.testSubItemChecked(0, 2, 0), "复数模式的初级不该跟着亮");
-        expect(out, ui.testUnitSprite() == ui.testLedJSprite, "双曲模式的计雷器第四格应是 j");
-        expect(out, ui.testUnitSprite() != ui.testLedISprite, "双曲模式不该再用 i 那一格");
-        out.writer().print("14 双曲模式：菜单结构 / 圆点 / 标题 / j 单位 通过\n", .{}) catch {};
+        expect(out, ui.testUnitSprite() == ui.testLedJSprite, "闵可夫斯基模式的计雷器第四格应是 j");
+        expect(out, ui.testUnitSprite() != ui.testLedISprite, "闵可夫斯基模式不该再用 i 那一格");
+        out.writer().print("14 闵可夫斯基模式：菜单结构 / 圆点 / 标题 / j 单位 通过\n", .{}) catch {};
 
-// 14c 显示值分派：手搓一个 5×5 双曲局面，核对 D → 贴图（负数走 hnum_*_i）
+// 14c 显示值分派：手搓一个 5×5 闵可夫斯基局面，核对 D → 贴图（负数走 hnum_*_i）
         {
             const gm = ui.game_ptr;
             gm.w = 5;
@@ -964,7 +964,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             expect(out, ui.testCellSprite(2) == ui.testHnumSprite(0), "有雷但抵消成 0 的格子应显示 0");
             expect(out, ui.testCellSprite(4) == ui.testBlankSprite, "邻域真的没雷的格子仍应是空白");
             expect(out, ui.testHnumSprite(-4) != ui.testHnumSprite(4), "2i 与 2 不能共用一张图");
-            out.writer().print("14c 双曲贴图分派：−3→√3i / +1→1 / −4→2i / 0 与空白分开 通过\n", .{}) catch {};
+            out.writer().print("14c 闵可夫斯基贴图分派：−3→√3i / +1→1 / −4→2i / 0 与空白分开 通过\n", .{}) catch {};
         }
 
 // 14d 玩法与操作：一篇文案讲两个模式（不再是选项卡窗口）
@@ -972,16 +972,16 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             var hb: [3072]u8 = undefined;
             const help = u16ToUtf8(&hb, std.mem.span(ui.testHelpText));
             expect(out, std.mem.indexOf(u8, help, "复数模式：") != null, "玩法里应有「复数模式：」这一段");
-            expect(out, std.mem.indexOf(u8, help, "双曲复数模式：") != null, "玩法里应有「双曲复数模式：」这一段");
+            expect(out, std.mem.indexOf(u8, help, "闵可夫斯基模式：") != null, "玩法里应有「闵可夫斯基模式：」这一段");
             expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "复数模式那段的四种雷应按雷的名字列");
-            expect(out, std.mem.indexOf(u8, help, "正双曲雷、负双曲雷") != null, "双曲模式那段应写正双曲雷、负双曲雷");
+            expect(out, std.mem.indexOf(u8, help, "正类空雷、负类空雷") != null, "闵可夫斯基模式那段应写正类空雷、负类空雷");
             expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "复数模式的判据要写清楚");
-            expect(out, std.mem.indexOf(u8, help, "实、j部的数量等于真实数量") != null, "双曲模式的判据要写清楚");
-            expect(out, std.mem.indexOf(u8, help, "形式模长S=√(a²-b²)") != null, "双曲模式要说清形式模长怎么算");
-            expect(out, std.mem.indexOf(u8, help, "双曲虚数单位j²=1") != null, "双曲模式要写明单位 j²=1");
+            expect(out, std.mem.indexOf(u8, help, "实、j部的数量等于真实数量") != null, "闵可夫斯基模式的判据要写清楚");
+            expect(out, std.mem.indexOf(u8, help, "时空间隔S=√(a²-b²)") != null, "闵可夫斯基模式要说清时空间隔怎么算");
+            expect(out, std.mem.indexOf(u8, help, "单位j²=1") != null, "闵可夫斯基模式要写明单位 j²=1");
             out.writer().print("14d 玩法与操作：一篇文案含两个模式的规则 通过\n", .{}) catch {};
         }
-// 14e 纪录分模式 + 双曲局照样记账
+// 14e 纪录分模式 + 闵可夫斯基局照样记账
         {
             expect(out, ui.testScoreKeysDiffer(), "两个模式应各记一套纪录（键名不同）");
             ui.testSetScores(0, 0, 0);
@@ -990,30 +990,30 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             const hx = Lh.board_x + 4 * Lh.cell + @divTrunc(Lh.cell, 2);
             const hy = Lh.board_y + 4 * Lh.cell + @divTrunc(Lh.cell, 2);
             clearBoard(out, hx, hy, 33_000);
-            expect(out, ui.game_ptr.win, "双曲初级应能通关");
-            expect(out, ui.testGetScore(0) == 33, "双曲模式的用时也该记进初级那一格");
-            out.writer().print("14e 纪录：双曲局照记账 / 两套键名不同 通过\n", .{}) catch {};
+            expect(out, ui.game_ptr.win, "闵可夫斯基初级应能通关");
+            expect(out, ui.testGetScore(0) == 33, "闵可夫斯基模式的用时也该记进初级那一格");
+            out.writer().print("14e 纪录：闵可夫斯基局照记账 / 两套键名不同 通过\n", .{}) catch {};
         }
     }
 
-// 14f 自定义雷区的雷名随模式：双曲模式下 3/4 写「正双曲雷 / 负双曲雷」
+// 14f 自定义雷区的雷名随模式：闵可夫斯基模式下 3/4 写「正类空雷 / 负类空雷」
     {
         ui.testCommand(ui.test_IDM_HYPER_BEGINNER);
-        expect(out, ui.testOpenDialog(), "双曲模式下自定义对话框应能打开");
+        expect(out, ui.testOpenDialog(), "闵可夫斯基模式下自定义对话框应能打开");
         var lb: [1024]u8 = undefined;
         const labels = u16ToUtf8(&lb, ui.testDialogTexts());
-        expect(out, std.mem.indexOf(u8, labels, "正双曲雷") != null, "双曲模式下对话框应写「正双曲雷」");
-        expect(out, std.mem.indexOf(u8, labels, "负双曲雷") != null, "双曲模式下对话框应写「负双曲雷」");
-        expect(out, std.mem.indexOf(u8, labels, "正虚雷") == null, "双曲模式下不该再写「正虚雷」");
+        expect(out, std.mem.indexOf(u8, labels, "正类空雷") != null, "闵可夫斯基模式下对话框应写「正类空雷」");
+        expect(out, std.mem.indexOf(u8, labels, "负类空雷") != null, "闵可夫斯基模式下对话框应写「负类空雷」");
+        expect(out, std.mem.indexOf(u8, labels, "正虚雷") == null, "闵可夫斯基模式下不该再写「正虚雷」");
         ui.testCloseDialog();
         ui.testCommand(ui.test_IDM_BEGINNER);   // 回到复数模式，别影响后面的组
         expect(out, ui.testOpenDialog(), "复数模式下自定义对话框也应能打开");
         var lb2: [1024]u8 = undefined;
         const labels2 = u16ToUtf8(&lb2, ui.testDialogTexts());
         expect(out, std.mem.indexOf(u8, labels2, "正虚雷") != null, "复数模式下仍写「正虚雷」");
-        expect(out, std.mem.indexOf(u8, labels2, "正双曲雷") == null, "复数模式下不该写「正双曲雷」");
+        expect(out, std.mem.indexOf(u8, labels2, "正类空雷") == null, "复数模式下不该写「正类空雷」");
         ui.testCloseDialog();
-        out.writer().print("14f 自定义雷区：雷名随模式（虚雷 / 双曲雷）通过\n", .{}) catch {};
+        out.writer().print("14f 自定义雷区：雷名随模式（虚雷 / 闵可夫斯基雷）通过\n", .{}) catch {};
     }
 
 // 15) 失败/胜利后的判定贴图：标错雷 / 标错空格子 / 标对雷 / 标对旗 / 标错旗
@@ -1042,7 +1042,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         }.go;
         setup(gm);
         _ = gm.nbrs(12, &nbuf);
-        gm.mine[nbuf[0]] = 3;   // 正虚雷（双曲模式下就是正双曲雷）
+        gm.mine[nbuf[0]] = 3;   // 正虚雷（闵可夫斯基模式下就是正类空雷）
         gm.mine[nbuf[1]] = 1;   // 正实雷
         gm.mine[nbuf[2]] = 2;   // 负实雷
         gm.computeClues();
@@ -1076,11 +1076,11 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.wrongflag, false, 1), "胜利：标错旗也不能按玩家插错的旗型选图");
         expect(out, ui.testCellSprite(nbuf[1]) == ui.testClosedSprite, "胜利：没插旗的雷不该翻开（还是闭格）");
 
-// 15c 双曲模式：3/4 两种雷换成 j 系列贴图
+// 15c 闵可夫斯基模式：3/4 两种雷换成 j 系列贴图
         gm.mode = .hyper;
-        expect(out, ui.testSprite(S.mine, true, 1) == ui.testSprite(S.mine, false, 1), "双曲模式的实雷与复数模式共用贴图");
-        expect(out, ui.testSprite(S.mine, true, 3) != ui.testSprite(S.mine, false, 3), "双曲模式的双曲雷要换成它自己的贴图");
-        expect(out, ui.testSprite(S.flag, true, 3) != ui.testSprite(S.flag, false, 3), "双曲模式的双曲旗要换成它自己的贴图");
+        expect(out, ui.testSprite(S.mine, true, 1) == ui.testSprite(S.mine, false, 1), "闵可夫斯基模式的实雷与复数模式共用贴图");
+        expect(out, ui.testSprite(S.mine, true, 3) != ui.testSprite(S.mine, false, 3), "闵可夫斯基模式的闵可夫斯基雷要换成它自己的贴图");
+        expect(out, ui.testSprite(S.flag, true, 3) != ui.testSprite(S.flag, false, 3), "闵可夫斯基模式的闵可夫斯基旗要换成它自己的贴图");
         setup(gm);
         gm.mode = .hyper;
         _ = gm.nbrs(12, &nbuf);
@@ -1090,17 +1090,17 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         gm.over = true;
         gm.win = false;
         _ = gm.setFlag(nbuf[0], 1);
-        expect(out, ui.testCellSprite(nbuf[0]) == ui.testSprite(S.wrong, true, 3), "双曲模式失败：标错雷要用 j 版那张");
+        expect(out, ui.testCellSprite(nbuf[0]) == ui.testSprite(S.wrong, true, 3), "闵可夫斯基模式失败：标错雷要用 j 版那张");
         gm.over = false;
         gm.win = false;
-        expect(out, ui.testCellSprite(nbuf[1]) == ui.testClosedSprite, "双曲模式中途：没插旗的格子仍是闭格");
+        expect(out, ui.testCellSprite(nbuf[1]) == ui.testClosedSprite, "闵可夫斯基模式中途：没插旗的格子仍是闭格");
         gm.boom = @intCast(nbuf[2]);
         gm.open[nbuf[2]] = 1;
-        expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.boom, true, 4), "双曲模式踩中的双曲雷要用它自己的踩中贴图");
-        expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.boom, false, 4), "双曲模式踩中贴图不能沿用复数模式的");
+        expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.boom, true, 4), "闵可夫斯基模式踩中的闵可夫斯基雷要用它自己的踩中贴图");
+        expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.boom, false, 4), "闵可夫斯基模式踩中贴图不能沿用复数模式的");
         gm.mode = .complex;
         gm.boom = -1;
-        out.writer().print("15 判定贴图：标错雷/标错空格子/标对雷/标对旗/标错旗 + 双曲 j 系列 通过\n", .{}) catch {};
+        out.writer().print("15 判定贴图：标错雷/标错空格子/标对雷/标对旗/标错旗 + 闵可夫斯基 j 系列 通过\n", .{}) catch {};
     }
 
     out.writer().print("\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails }) catch {};

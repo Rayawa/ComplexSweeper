@@ -3,8 +3,8 @@
 
    单张图的命名：中文名（见下面 MAP）或者直接写槽位名，两种都认。
    落到图集里的排布按种类分段，段内从左到右、满一行换行，中间不留格线：
-     数字（复数 num_* + 双曲 hnum_*）
-     格子（闭格/空白/旗/雷/踩中，含双曲专用的 h*_3、h*_4）
+     数字（复数 num_* + 闵可夫斯基 hnum_*）
+     格子（闭格/空白/旗/雷/踩中，含闵可夫斯基专用的 h*_3、h*_4）
      判定（标错雷/标对雷/标错空格/标对旗/标错旗）
      数码管（led_*）
      人脸（face_*）
@@ -27,20 +27,26 @@ const dry = argv.includes('--dry');
 const wi = argv.indexOf('--width');
 const W = wi >= 0 ? Number(argv[wi + 1]) : 208;
 
-/* 中文文件名 → 槽位名。h 前缀 = 双曲模式专用（1/2 两种实雷两个模式共用，所以只有 3/4 有 h 版） */
+/* 中文文件名 → 槽位名。h 前缀 = 闵可夫斯基模式专用（1/2 两种实雷两个模式共用，所以只有 3/4 有 h 版） */
 const MAP = {
-  正双曲雷: 'hmine_3', 负双曲雷: 'hmine_4',
-  正双曲旗: 'hflag_3', 负双曲旗: 'hflag_4',
-  踩中正双曲雷: 'hboom_3', 踩中负双曲雷: 'hboom_4',
-  标错正双曲雷: 'hwrong_3', 标错负双曲雷: 'hwrong_4',
+  正类空雷: 'hmine_3', 负类空雷: 'hmine_4',
+  正类空旗: 'hflag_3', 负类空旗: 'hflag_4',
+  踩中正类空雷: 'hboom_3', 踩中负类空雷: 'hboom_4',
+  标错正类空雷: 'hwrong_3', 标错负类空雷: 'hwrong_4',
   标对正实雷: 'right_1', 标对负实雷: 'right_2', 标对正虚雷: 'right_3', 标对负虚雷: 'right_4',
-  标对正双曲雷: 'hright_3', 标对负双曲雷: 'hright_4',
+  标对正类空雷: 'hright_3', 标对负类空雷: 'hright_4',
   标对正实旗: 'rightflag_1', 标对负实旗: 'rightflag_2', 标对正虚旗: 'rightflag_3', 标对负虚旗: 'rightflag_4',
-  标对正双曲旗: 'hrightflag_3', 标对负双曲旗: 'hrightflag_4',
+  标对正类空旗: 'hrightflag_3', 标对负类空旗: 'hrightflag_4',
   标错正实旗: 'wrongflag_1', 标错负实旗: 'wrongflag_2', 标错正虚旗: 'wrongflag_3', 标错负虚旗: 'wrongflag_4',
-  标错正双曲旗: 'hwrongflag_3', 标错负双曲旗: 'hwrongflag_4',
+  标错正类空旗: 'hwrongflag_3', 标错负类空旗: 'hwrongflag_4',
   标错空格子: 'wrongblank',
 };
+/* 改名前的叫法是「双曲雷 / 双曲旗」，磁盘上现存的单图文件名还是那一套，
+   所以两种写法都收：不改文件名也能收进来，改成新名字也照样认。 */
+for (const [k, v] of Object.entries(MAP)) {
+  const alt = k.replace(/类空/g, '双曲');
+  if (alt !== k && !MAP[alt]) MAP[alt] = v;
+}
 
 /* ---------- 读图集与单张 ---------- */
 const meta = JSON.parse(fs.readFileSync(META, 'utf8'));

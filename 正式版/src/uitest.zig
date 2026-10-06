@@ -127,7 +127,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         var hb: [1024]u8 = undefined;
         const help = u16ToUtf8(&hb, std.mem.span(ui.testHelpText));
         expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "四种雷仍按雷的名字列（正实雷…）");
-        expect(out, std.mem.indexOf(u8, help, "正类空雷、负类空雷") != null, "闵可夫斯基模式那段应写正类空雷、负类空雷");
+        expect(out, std.mem.indexOf(u8, help, "正类时雷、负类时雷、正类空雷、负类空雷") != null, "闵可夫斯基模式那段应写正类时雷、负类时雷、正类空雷、负类空雷");
         expect(out, std.mem.indexOf(u8, help, "鼠标左键翻开格子，右键插旗") != null, "操作说明应在正文里");
         expect(out, std.mem.indexOf(u8, help, "点击人脸或者按F2 开局") != null, "开局方式应在正文里");
         expect(out, std.mem.indexOf(u8, help, "+1") == null and std.mem.indexOf(u8, help, "-1") == null, "玩法里不该出现 +1/−1 那套符号");
@@ -974,7 +974,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             expect(out, std.mem.indexOf(u8, help, "复数模式：") != null, "玩法里应有「复数模式：」这一段");
             expect(out, std.mem.indexOf(u8, help, "闵可夫斯基模式：") != null, "玩法里应有「闵可夫斯基模式：」这一段");
             expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "复数模式那段的四种雷应按雷的名字列");
-            expect(out, std.mem.indexOf(u8, help, "正类空雷、负类空雷") != null, "闵可夫斯基模式那段应写正类空雷、负类空雷");
+            expect(out, std.mem.indexOf(u8, help, "正类时雷、负类时雷、正类空雷、负类空雷") != null, "闵可夫斯基模式那段应写正类时雷、负类时雷、正类空雷、负类空雷");
             expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "复数模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "实、j部的数量等于真实数量") != null, "闵可夫斯基模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "时空间隔S=√(a²-b²)") != null, "闵可夫斯基模式要说清时空间隔怎么算");
@@ -996,12 +996,15 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         }
     }
 
-// 14f 自定义雷区的雷名随模式：闵可夫斯基模式下 3/4 写「正类空雷 / 负类空雷」
+// 14f 自定义雷区的雷名随模式：闵可夫斯基模式下写「类时雷 / 类空雷」，复数模式写「实雷 / 虚雷」
     {
         ui.testCommand(ui.test_IDM_HYPER_BEGINNER);
         expect(out, ui.testOpenDialog(), "闵可夫斯基模式下自定义对话框应能打开");
         var lb: [1024]u8 = undefined;
         const labels = u16ToUtf8(&lb, ui.testDialogTexts());
+        expect(out, std.mem.indexOf(u8, labels, "正类时雷") != null, "闵可夫斯基模式下对话框应写「正类时雷」");
+        expect(out, std.mem.indexOf(u8, labels, "负类时雷") != null, "闵可夫斯基模式下对话框应写「负类时雷」");
+        expect(out, std.mem.indexOf(u8, labels, "正实雷") == null, "闵可夫斯基模式下不该再写「正实雷」");
         expect(out, std.mem.indexOf(u8, labels, "正类空雷") != null, "闵可夫斯基模式下对话框应写「正类空雷」");
         expect(out, std.mem.indexOf(u8, labels, "负类空雷") != null, "闵可夫斯基模式下对话框应写「负类空雷」");
         expect(out, std.mem.indexOf(u8, labels, "正虚雷") == null, "闵可夫斯基模式下不该再写「正虚雷」");
@@ -1010,10 +1013,12 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, ui.testOpenDialog(), "复数模式下自定义对话框也应能打开");
         var lb2: [1024]u8 = undefined;
         const labels2 = u16ToUtf8(&lb2, ui.testDialogTexts());
+        expect(out, std.mem.indexOf(u8, labels2, "正实雷") != null, "复数模式下仍写「正实雷」");
         expect(out, std.mem.indexOf(u8, labels2, "正虚雷") != null, "复数模式下仍写「正虚雷」");
+        expect(out, std.mem.indexOf(u8, labels2, "正类时雷") == null, "复数模式下不该写「正类时雷」");
         expect(out, std.mem.indexOf(u8, labels2, "正类空雷") == null, "复数模式下不该写「正类空雷」");
         ui.testCloseDialog();
-        out.writer().print("14f 自定义雷区：雷名随模式（虚雷 / 闵可夫斯基雷）通过\n", .{}) catch {};
+        out.writer().print("14f 自定义雷区：雷名随模式（实雷·虚雷 / 类时雷·类空雷）通过\n", .{}) catch {};
     }
 
 // 15) 失败/胜利后的判定贴图：标错雷 / 标错空格子 / 标对雷 / 标对旗 / 标错旗

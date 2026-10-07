@@ -978,7 +978,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "复数模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "实、j部的数量等于真实数量") != null, "闵可夫斯基模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "时空间隔S=√(a²-b²)") != null, "闵可夫斯基模式要说清时空间隔怎么算");
-            expect(out, std.mem.indexOf(u8, help, "单位j²=1") != null, "闵可夫斯基模式要写明单位 j²=1");
+            expect(out, std.mem.indexOf(u8, help, "定义类空单位j²=1") != null, "闵可夫斯基模式要写明「定义类空单位j²=1」");
             out.writer().print("14d 玩法与操作：一篇文案含两个模式的规则 通过\n", .{}) catch {};
         }
 // 14e 纪录分模式 + 闵可夫斯基局照样记账
@@ -1108,23 +1108,25 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         out.writer().print("15 判定贴图：标错雷/标错空格子/标对雷/标对旗/标错旗 + 闵可夫斯基 j 系列 通过\n", .{}) catch {};
     }
 
-// 16) 声音开关：菜单里一行，默认开着（勾选态），点一下关掉
+// 16) 声音开关：菜单里一行，点一下翻转，圆点跟着翻转
     {
         // 游戏菜单顶层：开局/分隔线/两个模式/分隔线/声音/三个缩放/分隔线/退出
         expect(out, ui.testPopupCount(0) == 11, "游戏菜单顶层应是 11 项（多出「声音」这一行）");
         expect(out, ui.testPopupItemId(0, 5) == @as(i32, @intCast(ui.test_IDM_SOUND)), "「声音」应在两个模式之后（第 6 项）");
         expect(out, ui.testPopupItemId(0, 6) == @as(i32, @intCast(ui.test_IDM_ZOOM1)), "「声音」后面接着三个缩放");
-        expect(out, !ui.testSoundOff(), "声音默认应是开着的");
-        expect(out, ui.testPopupItemChecked(0, 5), "声音开着时那一行应带勾/圆点");
+        // 起手状态取决于本机存着的偏好（默认是没有这一项 = 开），所以这里只验"翻转"，
+        // 不去假设机器上一定是开的——否则换台机器、或者上次关过声音，自检就红了。
+        const was_off = ui.testSoundOff();
+        expect(out, ui.testPopupItemChecked(0, 5) == !was_off, "菜单圆点应反映当前状态（开着才有圆点）");
         ui.testCommand(ui.test_IDM_SOUND);
-        expect(out, ui.testSoundOff(), "点一下应关掉声音");
-        expect(out, !ui.testPopupItemChecked(0, 5), "关掉后那一行的圆点应消失");
+        expect(out, ui.testSoundOff() != was_off, "点一下应把开关翻过来");
+        expect(out, ui.testPopupItemChecked(0, 5) == was_off, "翻过来后圆点状态也跟着翻");
         ui.testCommand(ui.test_IDM_SOUND);
-        expect(out, !ui.testSoundOff(), "再点一下应开回来");
-        expect(out, ui.testPopupItemChecked(0, 5), "开回来时圆点应重新出现");
+        expect(out, ui.testSoundOff() == was_off, "再点一下应还原");
+        expect(out, ui.testPopupItemChecked(0, 5) == !was_off, "圆点也应还原");
         expect(out, ui.testSoundMuted(), "自检进程仍然是强制静音状态（用户开关不影响这一层）");
         expect(out, !ui.testAudible(), "自检进程无论如何都不出声");
-        out.writer().print("16 声音开关：默认开（带圆点）/ 点一下关（圆点消失）/ 再点开回来 通过\n", .{}) catch {};
+        out.writer().print("16 声音开关：点一下翻转（圆点跟着翻转）/ 再点还原 通过\n", .{}) catch {};
     }
 
     out.writer().print("\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails }) catch {};

@@ -894,7 +894,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
 // 14a 菜单结构：游戏菜单 = 开局、分隔线、复数模式▸、闵可夫斯基模式▸、分隔线、纪录、分隔线、三个缩放、分隔线、退出
         expect(out, ui.testPopupItemId(0, 0) == @as(i32, @intCast(ui.test_IDM_NEW)), "游戏菜单第一项应是开局");
         expect(out, ui.testPopupItemId(0, 1) == 0, "游戏菜单第二项应是分隔线（ID 0）");
-        expect(out, ui.testPopupCount(0) == 10, "游戏菜单顶层应是 10 项（开局/分隔线/两个模式/分隔线/三个缩放/分隔线/退出）");
+        expect(out, ui.testPopupCount(0) == 11, "游戏菜单顶层应是 11 项（开局/分隔线/两个模式/分隔线/声音/三个缩放/分隔线/退出）");
         expect(out, ui.testSubItemId(0, 2, 0) == @as(i32, @intCast(ui.test_IDM_BEGINNER)), "复数模式子菜单第一项应是初级");
         expect(out, ui.testSubItemId(0, 2, 2) == @as(i32, @intCast(ui.test_IDM_EXPERT)), "复数模式子菜单第三项应是高级");
         expect(out, ui.testSubItemId(0, 2, 3) == 0, "复数模式子菜单第四项应是分隔线（ID 0）");
@@ -1106,6 +1106,25 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         gm.mode = .complex;
         gm.boom = -1;
         out.writer().print("15 判定贴图：标错雷/标错空格子/标对雷/标对旗/标错旗 + 闵可夫斯基 j 系列 通过\n", .{}) catch {};
+    }
+
+// 16) 声音开关：菜单里一行，默认开着（勾选态），点一下关掉
+    {
+        // 游戏菜单顶层：开局/分隔线/两个模式/分隔线/声音/三个缩放/分隔线/退出
+        expect(out, ui.testPopupCount(0) == 11, "游戏菜单顶层应是 11 项（多出「声音」这一行）");
+        expect(out, ui.testPopupItemId(0, 5) == @as(i32, @intCast(ui.test_IDM_SOUND)), "「声音」应在两个模式之后（第 6 项）");
+        expect(out, ui.testPopupItemId(0, 6) == @as(i32, @intCast(ui.test_IDM_ZOOM1)), "「声音」后面接着三个缩放");
+        expect(out, !ui.testSoundOff(), "声音默认应是开着的");
+        expect(out, ui.testPopupItemChecked(0, 5), "声音开着时那一行应带勾/圆点");
+        ui.testCommand(ui.test_IDM_SOUND);
+        expect(out, ui.testSoundOff(), "点一下应关掉声音");
+        expect(out, !ui.testPopupItemChecked(0, 5), "关掉后那一行的圆点应消失");
+        ui.testCommand(ui.test_IDM_SOUND);
+        expect(out, !ui.testSoundOff(), "再点一下应开回来");
+        expect(out, ui.testPopupItemChecked(0, 5), "开回来时圆点应重新出现");
+        expect(out, ui.testSoundMuted(), "自检进程仍然是强制静音状态（用户开关不影响这一层）");
+        expect(out, !ui.testAudible(), "自检进程无论如何都不出声");
+        out.writer().print("16 声音开关：默认开（带圆点）/ 点一下关（圆点消失）/ 再点开回来 通过\n", .{}) catch {};
     }
 
     out.writer().print("\n断言 {d} 项，失败 {d} 项\n", .{ checks, fails }) catch {};

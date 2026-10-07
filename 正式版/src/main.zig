@@ -31,6 +31,8 @@ const IDM_ZOOM2: usize = 111;
 const IDM_ZOOM3: usize = 112;
 const IDM_HELP_HOW: usize = 200;
 const IDM_BEST: usize = 106;
+/// 「声音」开关（默认开，勾选态就是开着）
+const IDM_SOUND: usize = 107;
 const IDM_HELP_ABOUT: usize = 202;
 
 const IDC_EDIT_H: i32 = 1001;
@@ -395,20 +397,63 @@ var over_sound_done: bool = false;
 var tick_second: i32 = -1;
 /// 命令行里除了 exe 路径之外的参数个数（0 = 用户双击运行 → 要出声）
 var arg_count: usize = 0;
-/// 静音开关：自检/抓图/导出这些非交互模式一律静音（逻辑照跑、计数照记，只是不真的放音）
+/// 强制静音：自检/抓图/导出这些非交互模式一律静音（逻辑照跑、计数照记，只是不真的放音）
 var sound_muted: bool = false;
+/// 用户在「游戏 → 声音」里关掉的（默认开着）。它和 sound_muted 是两回事：
+/// 前者是用户的选择（写进注册表，下次还关着），后者是非交互模式的强制静音。
+var sound_off: bool = false;
 
 /// 用户是不是"双击运行"（没带任何开关）
 fn interactive() bool {
     return arg_count == 0;
 }
 
+/// 这一下到不到耳朵里：非交互模式静音、或者用户把声音关了，都不放音。
+/// 注意计数（sound_log）不受影响——自检验的是"什么时候该播哪一段"。
+fn audible() bool {
+    return !sound_muted and !sound_off;
+}
+
 fn playSound(s: snd.Sounds) void {
     const i = @intFromEnum(s);
     sound_log[i] +%= 1;
-    if (sound_muted) return;
+    if (!audible()) return;
     const bytes = snd.wav(i);
     _ = w.PlaySoundW(@ptrCast(bytes.ptr), null, w.SND_MEMORY | w.SND_ASYNC | w.SND_NODEFAULT);
+}
+
+/// 声音偏好写在和纪录同一个注册表键下（Sound = 1 开 / 0 关；没这一项就是默认开）。
+/// 自检模式整个不碰注册表，和纪录一样（见 scores_persist 的说明）。
+fn loadSoundPref() void {
+    if (!scores_persist) return;
+    var hkey: usize = 0;
+    if (w.RegOpenKeyExW(w.HKEY_CURRENT_USER, w.wstr(REG_PATH), 0, w.KEY_READ, &hkey) != w.ERROR_SUCCESS) return;
+    defer _ = w.RegCloseKey(hkey);
+    var data: u32 = 1;
+    var size: u32 = @sizeOf(u32);
+    var kind: u32 = 0;
+    if (w.RegQueryValueExW(hkey, w.wstr("Sound"), null, &kind, @ptrCast(&data), &size) == w.ERROR_SUCCESS) {
+        sound_off = (data == 0);
+    }
+}
+
+fn saveSoundPref() void {
+    if (!scores_persist) return;
+    var hkey: usize = 0;
+    if (w.RegCreateKeyExW(w.HKEY_CURRENT_USER, w.wstr(REG_PATH), 0, null, w.REG_OPTION_NON_VOLATILE, w.KEY_WRITE, null, &hkey, null) != w.ERROR_SUCCESS) return;
+    defer _ = w.RegCloseKey(hkey);
+    const v: u32 = if (sound_off) 0 else 1;
+    _ = w.RegSetValueExW(hkey, w.wstr("Sound"), 0, w.REG_DWORD, @ptrCast(&v), @sizeOf(u32));
+}
+
+/// 菜单里点一下「声音」：开→关、关→开。关掉时顺手把正在响的那一段掐掉
+/// （PlaySoundW 传空指针就是停止播放）。
+fn toggleSound(hwnd: w.HWND) void {
+    sound_off = !sound_off;
+    if (sound_off) _ = w.PlaySoundW(null, null, 0);
+    saveSoundPref();
+    checkMenu();
+    _ = hwnd;
 }
 
 /// 计时走到 1 秒之后，每过一整秒播一下 tick。没开局、已结束、或者还在同一秒里都不播——
@@ -639,7 +684,7 @@ fn repaint(hwnd: w.HWND) void {
 /// 窗口标题固定不变（难度、局面信息都不往标题里塞）
 const APP_TITLE = "复扫雷 Complexweeper";
 /// 版本号：**只有这一处**。以后每次改动都顺手把它 +1，关于对话框与两个自检报告的抬头都读它。
-const APP_VERSION = "1.1.4";
+const APP_VERSION = "1.2.0";
 
 // ------------------------------------------------------------------ 棋盘交互
 fn cellAt(L: Layout, px: i32, py: i32) i32 {
@@ -996,7 +1041,7 @@ const SCORE_LABEL = [3][*:0]const u16{
 };
 /// 下标 0/1/2 = 初级/中级/高级；0 表示还没有纪录
 var best_scores = [3]i32{ 0, 0, 0 };
-/// 自检里关掉：既不写注册表，也不弹结算窗
+/// 自检里关掉：既不写注册表（纪录、声音偏好都算），也不弹结算窗
 var scores_persist = true;
 var scores_quiet = false;
 
@@ -1392,6 +1437,7 @@ fn handleCommand(hwnd: w.HWND, id: usize) void {
             if (runCustomDialog()) applyCustomFromDialog();
         },
         IDM_BEST => showBestScores(false, .complex),
+        IDM_SOUND => toggleSound(hwnd),
         IDM_HYPER_BEST => showBestScores(false, .hyper),
         IDM_EXIT => _ = w.DestroyWindow(hwnd),
         IDM_ZOOM1, IDM_ZOOM2, IDM_ZOOM3 => {
@@ -1490,6 +1536,8 @@ fn buildMenu() w.HMENU {
     _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(hyper_menu), w.wstr("闵可夫斯基模式(&M)"));
 
     _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
+    // 声音开关：勾选态 = 开着（默认开，点一下关）。用 RADIOCHECK 让 XP 主题画成圆点
+    _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_SOUND, w.wstr("声音(&S)"));
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_ZOOM1, w.wstr("缩放 100%"));
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_ZOOM2, w.wstr("缩放 200%"));
     _ = w.AppendMenuW(game_menu, w.MF.STRING, IDM_ZOOM3, w.wstr("缩放 300%"));
@@ -1528,6 +1576,13 @@ fn checkMenu() void {
             var i: i32 = 0;
             while (i < 3) : (i += 1) _ = w.CheckMenuItem(sub, @intCast(i), w.MF.BYPOSITION);
         }
+    }
+    // 声音开关：开着就用单选点画成 XP 那种"被选中的圆点"，关掉整个清掉（圆点消失）。
+    // 注意 CheckMenuItem 画的是对勾，CheckMenuRadioItem 画的才是圆点，这里要圆点。
+    if (sound_off) {
+        _ = w.CheckMenuItem(game_menu, IDM_SOUND, w.MF.BYCOMMAND);
+    } else {
+        _ = w.CheckMenuRadioItem(game_menu, IDM_SOUND, IDM_SOUND, IDM_SOUND, w.MF.BYCOMMAND);
     }
 }
 
@@ -1961,6 +2016,7 @@ pub fn main() void {
     hwnd_main = w.CreateWindowExW(0, w.wstr(CLASS_MAIN), w.wstr(APP_TITLE), style, 80, 60, r.right - r.left, r.bottom - r.top, null, buildMenu(), hinst, null);
     if (hwnd_main == null) return;
     loadScores();
+    loadSoundPref();
     checkMenu();
 
     if (uitestPath()) |p| {
@@ -2269,6 +2325,24 @@ pub fn testSprite(f: SpriteFamily, hyper_mode: bool, t: u8) u16 {
     return tbl[@min(@as(usize, t), 4)];
 }
 pub const testWrongBlankSprite = A.wrongblank_sprite;
+/// 用户在菜单里关掉声音了吗（和"非交互模式强制静音"是两回事）
+pub fn testSoundOff() bool {
+    return sound_off;
+}
+/// 现在按下这一下，声真的会响吗（两个静音来源任一为真就不响）
+pub fn testAudible() bool {
+    return audible();
+}
+/// 第 top 个下拉里第 idx 项（顶层项）有没有勾/圆点
+pub fn testPopupItemChecked(top: i32, idx: i32) bool {
+    const bar = w.GetMenu(hwnd_main);
+    if (bar == null) return false;
+    const sub = w.GetSubMenu(bar, top);
+    if (sub == null) return false;
+    const st = w.GetMenuState(sub, @intCast(idx), w.MF.BYPOSITION);
+    return (st & w.MF.CHECKED) != 0;
+}
+pub const test_IDM_SOUND = IDM_SOUND;
 /// 两套纪录键名确实是两套（防"加了模式却忘了换键"）
 pub fn testScoreKeysDiffer() bool {
     for (0..3) |i| {

@@ -157,6 +157,8 @@ pub const MF = struct {
     pub const STRING: UINT = 0x00000000;
     pub const SEPARATOR: UINT = 0x00000800;
     pub const CHECKED: UINT = 0x00000008;
+/// 让勾选画成 XP 那种圆点（而不是对勾）
+    pub const RADIOCHECK: UINT = 0x00000200;
     pub const GRAYED: UINT = 0x00000003;
     pub const ENABLED: UINT = 0x00000000;
     pub const POPUP: UINT = 0x00000010;

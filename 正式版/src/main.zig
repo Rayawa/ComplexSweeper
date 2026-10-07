@@ -541,7 +541,7 @@ fn paint(dc: w.HDC, L: Layout) void {
     // 没有状态行：原版扫雷底部就是空的（判据不通过时不作任何提示，只留状态枚举给自检）
 }
 
-/// 贴图按"雷的类型"查表（1 正实雷·正类时雷 / 2 负实雷·负类时雷 / 3 正虚雷·正类空雷 / 4 负虚雷·负类空雷）。
+/// 贴图按"雷的类型"查表（1 正实雷·正类时雷 / 2 负实雷·负类时雷 / 3 正虚雷·正双曲虚雷 / 4 负虚雷·负双曲虚雷）。
 /// 1、2 两种实雷（闵可夫斯基模式下叫类时雷）两个模式共用贴图；
 /// 3、4 在闵可夫斯基模式下换成 h 前缀那几张（±j 的画法不同，那边叫类空雷）。
 /// 表由 tools/gen_atlas.js 生成，缺哪张会自动退回上一档，见 src/assets.zig。
@@ -972,15 +972,15 @@ fn createCustomWindow() bool {
     const names = if (hyper())
         [4][*:0]const u16{
             w.wstr("正实雷（正类时雷）："), w.wstr("负实雷（负类时雷）："),
-            w.wstr("正虚雷（正类空雷）："), w.wstr("负虚雷（负类空雷）："),
+            w.wstr("正双曲虚雷（正类空雷）："), w.wstr("负双曲虚雷（负类空雷）："),
         }
     else
         [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正虚雷："), w.wstr("负虚雷：") };
     var k: usize = 0;
     while (k < 4) : (k += 1) {
         const yy = y + @as(i32, @intCast(k)) * 28;
-        _ = label(dialog_hwnd, hinst, 12, yy + 3, 180, 18, font, names[k]);
-        edit_handles[k + 2] = w.CreateWindowExW(w.WS.EX_CLIENTEDGE, w.wstr("EDIT"), w.wstr(""), w.WS.CHILD | w.WS.VISIBLE | w.WS.TABSTOP | 0x2000, 196, yy, 62, 22, dialog_hwnd, @ptrFromInt(@as(usize, @intCast(IDC_EDIT_T1 + @as(i32, @intCast(k))))), hinst, null);
+        _ = label(dialog_hwnd, hinst, 12, yy + 3, 200, 18, font, names[k]);
+        edit_handles[k + 2] = w.CreateWindowExW(w.WS.EX_CLIENTEDGE, w.wstr("EDIT"), w.wstr(""), w.WS.CHILD | w.WS.VISIBLE | w.WS.TABSTOP | 0x2000, 220, yy, 62, 22, dialog_hwnd, @ptrFromInt(@as(usize, @intCast(IDC_EDIT_T1 + @as(i32, @intCast(k))))), hinst, null);
         _ = w.SendMessageW(edit_handles[k + 2], 0x0030, @intFromPtr(font), w.TRUE);
         setEditInt(edit_handles[k + 2], dlg_state.t[k + 1]);
     }
@@ -1501,11 +1501,11 @@ const HELP_TEXT = "雷区里有四种雷。\r\n" ++
     "当旗帜数量等于周围真实雷数，且实虚比例符合真实比例或其倒数的时候，可以展开。\r\n" ++
     "\r\n" ++
     "双曲复数模式（闵可夫斯基模式）：\r\n" ++
-    "四种雷分别是正实雷（正类时雷）、负实雷（负类时雷）、正虚雷（正类空雷）、负虚雷（负类空雷）。\r\n" ++
+    "四种雷分别是正实雷（正类时雷）、负实雷（负类时雷）、正双曲虚雷（正类空雷）、负双曲虚雷（负类空雷）。\r\n" ++
     "定义双曲虚数单位（类空单位）j²=1，形式模长（时空间隔）S=√(a²-b²)，所以，可以出现虚数。\r\n" ++
     "（本模式只是从闵可夫斯基时空度规得来的灵感，跟广义相对论没有多大关系。）\r\n" ++
     "数字是该格周围所有雷之加和的形式模长（时空间隔），均被写为整数或最简根式。\r\n" ++
-    "当旗帜数量等于周围真实雷数，且实、j部的数量等于真实数量时，可以展开。";
+    "当旗帜数量等于周围真实雷数，且实部（类时部）、j部（类空部）的数量等于真实数量时，可以展开。";
 
 fn showHelp() void {
     _ = w.MessageBoxW(hwnd_main, w.wstr(HELP_TEXT), w.wstr("玩法与操作"), w.MB.OK | w.MB.ICONINFORMATION);

@@ -917,7 +917,7 @@ fn createCustomWindow() bool {
     _ = w.RegisterClassExW(&wc);
 
     const dw: i32 = 330;
-    const dh: i32 = 246; // 去掉"四种雷各自的颗数"那一行之后，高度跟着收 22
+    const dh: i32 = 308; // 去掉"四种雷各自的颗数"那一行之后，高度跟着收 22
     const scr_w = w.GetSystemMetrics(w.SM.CXSCREEN);
     const scr_h = w.GetSystemMetrics(w.SM.CYSCREEN);
     var r = w.RECT{ .left = 0, .top = 0, .right = dw, .bottom = dh };
@@ -967,22 +967,24 @@ fn createCustomWindow() bool {
     _ = label(dialog_hwnd, hinst, 156, y + 3, 150, 18, font, w.wstr("9 – 40 列"));
     y += 34;
 
-    // 四种雷的名字随模式：闵可夫斯基模式下 3/4 是闵可夫斯基雷，不叫虚雷
+    // 四种雷的名字随模式。双曲（闵可夫斯基）模式下写全名「正实雷（正类时雷）」这种格式，
+    // 标签长得多，所以四种雷改成一行一种竖着排，编辑框统一右移到 x=196。
     const names = if (hyper())
-        [4][*:0]const u16{ w.wstr("正类时雷："), w.wstr("负类时雷："), w.wstr("正类空雷："), w.wstr("负类空雷：") }
+        [4][*:0]const u16{
+            w.wstr("正实雷（正类时雷）："), w.wstr("负实雷（负类时雷）："),
+            w.wstr("正虚雷（正类空雷）："), w.wstr("负虚雷（负类空雷）："),
+        }
     else
         [4][*:0]const u16{ w.wstr("正实雷："), w.wstr("负实雷："), w.wstr("正虚雷："), w.wstr("负虚雷：") };
     var k: usize = 0;
     while (k < 4) : (k += 1) {
-        const col: i32 = if (k % 2 == 0) 0 else 160;
-        const row: i32 = @divTrunc(@as(i32, @intCast(k)), 2);
-        const yy = y + row * 30;
-        _ = label(dialog_hwnd, hinst, 12 + col, yy + 3, 68, 18, font, names[k]);
-        edit_handles[k + 2] = w.CreateWindowExW(w.WS.EX_CLIENTEDGE, w.wstr("EDIT"), w.wstr(""), w.WS.CHILD | w.WS.VISIBLE | w.WS.TABSTOP | 0x2000, 80 + col, yy, 62, 22, dialog_hwnd, @ptrFromInt(@as(usize, @intCast(IDC_EDIT_T1 + @as(i32, @intCast(k))))), hinst, null);
+        const yy = y + @as(i32, @intCast(k)) * 28;
+        _ = label(dialog_hwnd, hinst, 12, yy + 3, 180, 18, font, names[k]);
+        edit_handles[k + 2] = w.CreateWindowExW(w.WS.EX_CLIENTEDGE, w.wstr("EDIT"), w.wstr(""), w.WS.CHILD | w.WS.VISIBLE | w.WS.TABSTOP | 0x2000, 196, yy, 62, 22, dialog_hwnd, @ptrFromInt(@as(usize, @intCast(IDC_EDIT_T1 + @as(i32, @intCast(k))))), hinst, null);
         _ = w.SendMessageW(edit_handles[k + 2], 0x0030, @intFromPtr(font), w.TRUE);
         setEditInt(edit_handles[k + 2], dlg_state.t[k + 1]);
     }
-    y += 66;
+    y += 4 * 28 + 6;
     const split_btn = w.CreateWindowExW(0, w.wstr("BUTTON"), w.wstr("按合计均分"), w.WS.CHILD | w.WS.VISIBLE | w.WS.TABSTOP, 12, y, 100, 24, dialog_hwnd, @ptrFromInt(@as(usize, IDC_BTN_SPLIT)), hinst, null);
     _ = w.SendMessageW(split_btn, 0x0030, @intFromPtr(font), w.TRUE);
     dlg_err_hwnd = label(dialog_hwnd, hinst, 120, y + 3, 200, 18, font, w.wstr(""));
@@ -1499,10 +1501,10 @@ const HELP_TEXT = "雷区里有四种雷。\r\n" ++
     "当旗帜数量等于周围真实雷数，且实虚比例符合真实比例或其倒数的时候，可以展开。\r\n" ++
     "\r\n" ++
     "双曲复数模式（闵可夫斯基模式）：\r\n" ++
-    "四种雷分别是正类时雷、负类时雷、正类空雷、负类空雷。\r\n" ++
-    "定义类空单位j²=1，时空间隔S=√(a²-b²)，所以，可以出现虚数。\r\n" ++
+    "四种雷分别是正实雷（正类时雷）、负实雷（负类时雷）、正虚雷（正类空雷）、负虚雷（负类空雷）。\r\n" ++
+    "定义双曲虚数单位（类空单位）j²=1，形式模长（时空间隔）S=√(a²-b²)，所以，可以出现虚数。\r\n" ++
     "（本模式只是从闵可夫斯基时空度规得来的灵感，跟广义相对论没有多大关系。）\r\n" ++
-    "数字是该格周围所有雷之加和的时空间隔，均被写为整数或最简根式。\r\n" ++
+    "数字是该格周围所有雷之加和的形式模长（时空间隔），均被写为整数或最简根式。\r\n" ++
     "当旗帜数量等于周围真实雷数，且实、j部的数量等于真实数量时，可以展开。";
 
 fn showHelp() void {

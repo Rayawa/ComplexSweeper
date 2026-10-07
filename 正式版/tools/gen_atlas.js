@@ -110,8 +110,8 @@ placed = meta.slots.map((s, i) => {
 for (const D of ACHIEVABLE) if (!seen.has('num_' + D)) throw new Error('整图里缺少 D=' + D + ' 的贴图（num_' + D + '）');
 const numCount = [...seen].filter(n => /^num_\d+$/.test(n)).length;
 if (numCount !== ACHIEVABLE.length) throw new Error('整图里的数字贴图数量不对：' + numCount);
-// 闵可夫斯基模式的显示值：显示文本与复数模式不同的那 27 个各有一张自己的贴图（hnum_*）；
-// 文本相同的 12 个（0 1 2 √5 2√2 3 4 5 4√2 6 7 8）直接复用复数模式的 num_<D>，
+// 闵可夫斯基模式的显示值：显示文本与圆复数模式不同的那 27 个各有一张自己的贴图（hnum_*）；
+// 文本相同的 12 个（0 1 2 √5 2√2 3 4 5 4√2 6 7 8）直接复用圆复数模式的 num_<D>，
 // 图集里不为它们另留槽位——少一份重复素材，也就少一处要同步的地方。
 const hyperSprite = new Map();   // D -> 贴图槽位名
 for (const v of HYPER_VALUES) {
@@ -126,7 +126,7 @@ for (const v of HYPER_VALUES) {
 for (const n of ['led_i', 'led_j']) if (!seen.has(n)) throw new Error('整图里缺少计雷器单位贴图（' + n + '）');
 const reuseCount = [...hyperSprite.values()].filter((n) => n.startsWith('num_')).length;
 console.log(`素材来源：整图（图集.png + 图集.json，${placed.length} 个槽位，${W}×${H}）`);
-console.log(`闵可夫斯基模式 39 个显示值：自带贴图 ${hyperSprite.size - reuseCount} 张 + 复用复数模式 ${reuseCount} 张`);
+console.log(`闵可夫斯基模式 39 个显示值：自带贴图 ${hyperSprite.size - reuseCount} 张 + 复用圆复数模式 ${reuseCount} 张`);
 
 // 占位图提醒：新增区的占位素材字色是紫红 160,0,160（见 文档/双曲复数模式.md）。真素材里不会出现它，
 // 所以哪一格还带着这个颜色，就是"还没画"。这里只提醒、不拦构建。
@@ -224,7 +224,7 @@ lines.push('pub fn rect(i: u16) Rect { return rects[i]; }');
 lines.push('');
 for (const [name, i] of idx) lines.push('pub const ' + name + ': u16 = ' + i + ';');
 lines.push('');
-lines.push('/// 显示值 D = |S|^2 -> 数字贴图（复数模式）；表外为 0xFFFF（不该出现）');
+lines.push('/// 显示值 D = |S|^2 -> 数字贴图（圆复数模式）；表外为 0xFFFF（不该出现）');
 lines.push('pub const num_by_D = blk: {');
 lines.push('    var t = [_]u16{0xFFFF} ** 65;');
 for (const D of ACHIEVABLE) lines.push('    t[' + D + '] = num_' + D + ';');
@@ -233,7 +233,7 @@ lines.push('};');
 lines.push('');
 lines.push('/// 显示值 D = a^2 - b^2（-64 … 64）-> 数字贴图（闵可夫斯基模式）；');
 lines.push('/// 下标是 D + 64，表外为 0xFFFF（不该出现）。39 个值的来历见 tools/hyper_values.js，');
-lines.push('/// 其中显示文本与复数模式相同的 12 个直接指向 num_<D>（不重复出图）。');
+lines.push('/// 其中显示文本与圆复数模式相同的 12 个直接指向 num_<D>（不重复出图）。');
 lines.push('pub const hnum_by_D = blk: {');
 lines.push('    var t = [_]u16{0xFFFF} ** 129;');
 for (const v of HYPER_VALUES) lines.push('    t[' + (v.D + 64) + '] = ' + hyperSprite.get(v.D) + '; // ' + v.D + ' → ' + v.text);
@@ -242,7 +242,7 @@ lines.push('};');
 lines.push('');
 
 /* 每种雷（1..4）在各模式下的贴图。1/2 是两种实雷（闵可夫斯基模式下叫类时雷），两个模式共用贴图；
-   3/4 在复数模式是 ±虚雷、在闵可夫斯基模式是 ±闵可夫斯基雷，各画各的（h 前缀 = 闵可夫斯基专用）。
+   3/4 在圆复数模式是 ±虚雷、在闵可夫斯基模式是 ±闵可夫斯基雷，各画各的（h 前缀 = 闵可夫斯基专用）。
    判定那几张（标对/标错）还没画全的，先退回已有贴图，画好丢进图集就自动接上。 */
 const T4 = [1, 2, 3, 4];
 const has = (n) => seen.has(n);

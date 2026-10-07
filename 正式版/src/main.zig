@@ -508,7 +508,7 @@ fn paint(dc: w.HDC, L: Layout) void {
         const led_y = cy + @divTrunc(26 * L.z - 23 * L.z, 2);
         const vw = drawLed(dc, led_x, led_y, val, panelValueDigits(imag, val), L.z);
         // 单位雷还有第四格单位记号（没开局时那一格也画成空格子，不留白）：
-        // 复数模式是 i，闵可夫斯基模式是 j
+        // 圆复数模式是 i，闵可夫斯基模式是 j
         if (imag) blitSprite(dc, if (val == null) A.led_blank else if (hyper()) A.led_j else A.led_i, led_x + vw, led_y, 13 * L.z, 23 * L.z);
         cy += 26 * L.z + 2 * L.z;
     }
@@ -611,7 +611,7 @@ fn cellSprite(i: usize) u16 {
         }
         const D = game.clue[i];
         if (D == 0 and game.nbrMineCount(i) == 0) return A.blank;
-        // 两个模式各查各的表：复数模式 a²+b²（0…64），闵可夫斯基模式 a²−b²（−64…64，下标 +64）
+        // 两个模式各查各的表：圆复数模式 a²+b²（0…64），闵可夫斯基模式 a²−b²（−64…64，下标 +64）
         const s = if (hyper())
             A.hnum_by_D[@intCast(D + 64)]
         else
@@ -1025,7 +1025,7 @@ fn runCustomDialog() bool {
 // 和原版扫雷一样用注册表，所以分发仍然只有一个 exe、不会多出存档文件。
 // 自定义棋盘不计入（尺寸/雷数任意，比时间没有意义）。
 const REG_PATH = "Software\\Complexweeper";
-/// 纪录键名按模式分开：复数模式沿用原来那三个键（老纪录还在），闵可夫斯基模式另起一套。
+/// 纪录键名按模式分开：圆复数模式沿用原来那三个键（老纪录还在），闵可夫斯基模式另起一套。
 /// 两个模式的难度档位虽然同名同尺寸，但盘面数值规则不同，混在一张表里比时间没有意义。
 const SCORE_VALUES_CPLX = [3][*:0]const u16{ w.wstr("Beginner"), w.wstr("Intermediate"), w.wstr("Expert") };
 const SCORE_VALUES_HYPER = [3][*:0]const u16{ w.wstr("HyperBeginner"), w.wstr("HyperIntermediate"), w.wstr("HyperExpert") };
@@ -1146,7 +1146,7 @@ fn showBestScores(highlight: bool, m: g.Mode) void {
     var tb: [64]u16 = undefined;
     var k: usize = 0;
     appendW(&tb, &k, if (highlight) w.wstr("新纪录！") else w.wstr("最高分纪录"));
-    appendW(&tb, &k, if (m == .hyper) w.wstr(" · 闵可夫斯基模式") else w.wstr(" · 复数模式"));
+    appendW(&tb, &k, if (m == .hyper) w.wstr(" · 双曲复数模式（闵可夫斯基模式）") else w.wstr(" · 圆复数模式"));
     tb[k] = 0;
     _ = w.MessageBoxW(hwnd_main, @ptrCast(&buf), @ptrCast(&tb), w.MB.OK | w.MB.ICONINFORMATION);
 }
@@ -1493,12 +1493,12 @@ const HELP_TEXT = "雷区里有四种雷。\r\n" ++
     "鼠标左键翻开格子，右键插旗，中键或左右键同时点击展开格子。\r\n" ++
     "点击人脸或者按F2 开局。\r\n" ++
     "\r\n" ++
-    "复数模式：\r\n" ++
+    "圆复数模式：\r\n" ++
     "四种雷分别是正实雷、负实雷、正虚雷、负虚雷。\r\n" ++
     "数字代表该格周围所有雷的加和之模长，均被写为整数或最简根式。\r\n" ++
     "当旗帜数量等于周围真实雷数，且实虚比例符合真实比例或其倒数的时候，可以展开。\r\n" ++
     "\r\n" ++
-    "闵可夫斯基模式：\r\n" ++
+    "双曲复数模式（闵可夫斯基模式）：\r\n" ++
     "四种雷分别是正类时雷、负类时雷、正类空雷、负类空雷。\r\n" ++
     "定义类空单位j²=1，时空间隔S=√(a²-b²)，所以，可以出现虚数。\r\n" ++
     "（本模式只是从闵可夫斯基时空度规得来的灵感，跟广义相对论没有多大关系。）\r\n" ++
@@ -1524,7 +1524,7 @@ fn buildMenu() w.HMENU {
     // 纪录放进各自的模式里：两个模式各记一套，从哪个模式的菜单点进去就看哪一套
     _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_BEST, w.wstr("最高分纪录(&R)…"));
     _ = w.AppendMenuW(cplx_menu, w.MF.STRING, IDM_CUSTOM, w.wstr("自定义雷区(&C)…"));
-    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(cplx_menu), w.wstr("复数模式(&C)"));
+    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(cplx_menu), w.wstr("圆复数模式(&C)"));
 
     const hyper_menu = w.CreatePopupMenu();
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_BEGINNER, w.wstr("初级(&B)\t9×9 · 10 雷"));
@@ -1533,7 +1533,7 @@ fn buildMenu() w.HMENU {
     _ = w.AppendMenuW(hyper_menu, w.MF.SEPARATOR, 0, null);
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_BEST, w.wstr("最高分纪录(&R)…"));
     _ = w.AppendMenuW(hyper_menu, w.MF.STRING, IDM_HYPER_CUSTOM, w.wstr("自定义雷区(&C)…"));
-    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(hyper_menu), w.wstr("闵可夫斯基模式(&M)"));
+    _ = w.AppendMenuW(game_menu, w.MF.POPUP, @intFromPtr(hyper_menu), w.wstr("双曲复数模式（闵可夫斯基模式）(&M)"));
 
     _ = w.AppendMenuW(game_menu, w.MF.SEPARATOR, 0, null);
     // 声音开关：勾选态 = 开着（默认开，点一下关）。用 RADIOCHECK 让 XP 主题画成圆点
@@ -1553,7 +1553,7 @@ fn buildMenu() w.HMENU {
     return bar;
 }
 
-/// 游戏菜单里两个模式子菜单的位置（只数游戏菜单自己的项目：开局、分隔线、复数模式、闵可夫斯基模式…）
+/// 游戏菜单里两个模式子菜单的位置（只数游戏菜单自己的项目：开局、分隔线、圆复数模式、闵可夫斯基模式…）
 const MODE_MENU_INDEX = [2]i32{ 2, 3 };
 
 /// 菜单圆点：只有"当前模式 + 当前难度"那一项是选中态（另一个模式的同名档位不勾），
@@ -2300,7 +2300,7 @@ pub fn testIsHyper() bool {
 pub fn testPresetIndex() i32 {
     return cur_preset;
 }
-/// 计雷器第四格（单位格）现在用哪张贴图：复数模式 led_i，闵可夫斯基模式 led_j
+/// 计雷器第四格（单位格）现在用哪张贴图：圆复数模式 led_i，闵可夫斯基模式 led_j
 pub fn testUnitSprite() u16 {
     return if (hyper()) A.led_j else A.led_i;
 }

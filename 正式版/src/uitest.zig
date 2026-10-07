@@ -154,7 +154,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
     expect(out, ui.testMenuHasId(ui.test_IDM_HELP_HOW), "帮助菜单应有「玩法与操作」");
     expect(out, ui.testMenuHasId(ui.test_IDM_HELP_ABOUT), "帮助菜单应有「关于」");
     expect(out, !ui.testMenuHasId(ui.test_IDM_HELP_TABLE_REMOVED), "「显示值对照表」应从菜单里删掉");
-    expect(out, ui.testMenuHasId(ui.test_IDM_BEST), "复数模式子菜单里应有「最高分纪录」");
+    expect(out, ui.testMenuHasId(ui.test_IDM_BEST), "圆复数模式子菜单里应有「最高分纪录」");
     expect(out, ui.testMenuHasId(ui.test_IDM_HYPER_BEST), "闵可夫斯基模式子菜单里应有「最高分纪录」");
     out.writer().print("2 缩放菜单：通过\n", .{}) catch {};
 
@@ -891,15 +891,15 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
 
 // 14) 闵可夫斯基模式：菜单结构 / 圆点 / 标题 / j 单位 / 贴图分派 / 帮助窗口两个选项卡
     {
-// 14a 菜单结构：游戏菜单 = 开局、分隔线、复数模式▸、闵可夫斯基模式▸、分隔线、纪录、分隔线、三个缩放、分隔线、退出
+// 14a 菜单结构：游戏菜单 = 开局、分隔线、圆复数模式▸、闵可夫斯基模式▸、分隔线、纪录、分隔线、三个缩放、分隔线、退出
         expect(out, ui.testPopupItemId(0, 0) == @as(i32, @intCast(ui.test_IDM_NEW)), "游戏菜单第一项应是开局");
         expect(out, ui.testPopupItemId(0, 1) == 0, "游戏菜单第二项应是分隔线（ID 0）");
         expect(out, ui.testPopupCount(0) == 11, "游戏菜单顶层应是 11 项（开局/分隔线/两个模式/分隔线/声音/三个缩放/分隔线/退出）");
-        expect(out, ui.testSubItemId(0, 2, 0) == @as(i32, @intCast(ui.test_IDM_BEGINNER)), "复数模式子菜单第一项应是初级");
-        expect(out, ui.testSubItemId(0, 2, 2) == @as(i32, @intCast(ui.test_IDM_EXPERT)), "复数模式子菜单第三项应是高级");
-        expect(out, ui.testSubItemId(0, 2, 3) == 0, "复数模式子菜单第四项应是分隔线（ID 0）");
-        expect(out, ui.testSubItemId(0, 2, 4) == @as(i32, @intCast(ui.test_IDM_BEST)), "复数模式子菜单应有最高分纪录");
-        expect(out, ui.testSubItemId(0, 2, 5) == @as(i32, @intCast(ui.test_IDM_CUSTOM)), "复数模式子菜单最后一项应是自定义雷区");
+        expect(out, ui.testSubItemId(0, 2, 0) == @as(i32, @intCast(ui.test_IDM_BEGINNER)), "圆复数模式子菜单第一项应是初级");
+        expect(out, ui.testSubItemId(0, 2, 2) == @as(i32, @intCast(ui.test_IDM_EXPERT)), "圆复数模式子菜单第三项应是高级");
+        expect(out, ui.testSubItemId(0, 2, 3) == 0, "圆复数模式子菜单第四项应是分隔线（ID 0）");
+        expect(out, ui.testSubItemId(0, 2, 4) == @as(i32, @intCast(ui.test_IDM_BEST)), "圆复数模式子菜单应有最高分纪录");
+        expect(out, ui.testSubItemId(0, 2, 5) == @as(i32, @intCast(ui.test_IDM_CUSTOM)), "圆复数模式子菜单最后一项应是自定义雷区");
         expect(out, ui.testSubItemId(0, 3, 0) == @as(i32, @intCast(ui.test_IDM_HYPER_BEGINNER)), "闵可夫斯基模式子菜单第一项应是初级");
         expect(out, ui.testSubItemId(0, 3, 2) == @as(i32, @intCast(ui.test_IDM_HYPER_EXPERT)), "闵可夫斯基模式子菜单第三项应是高级");
         expect(out, ui.testSubItemId(0, 3, 4) == @as(i32, @intCast(ui.test_IDM_HYPER_BEST)), "闵可夫斯基模式子菜单应有最高分纪录");
@@ -925,7 +925,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, std.mem.indexOf(u8, htitle, "闵可夫斯基") == null, "标题里不该出现模式说明");
         expect(out, ui.testSubItemChecked(0, 3, 0), "闵可夫斯基模式的初级应打上圆点");
         expect(out, !ui.testSubItemChecked(0, 3, 1), "闵可夫斯基模式的中级不该有圆点");
-        expect(out, !ui.testSubItemChecked(0, 2, 0), "复数模式的初级不该跟着亮");
+        expect(out, !ui.testSubItemChecked(0, 2, 0), "圆复数模式的初级不该跟着亮");
         expect(out, ui.testUnitSprite() == ui.testLedJSprite, "闵可夫斯基模式的计雷器第四格应是 j");
         expect(out, ui.testUnitSprite() != ui.testLedISprite, "闵可夫斯基模式不该再用 i 那一格");
         out.writer().print("14 闵可夫斯基模式：菜单结构 / 圆点 / 标题 / j 单位 通过\n", .{}) catch {};
@@ -971,11 +971,11 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         {
             var hb: [3072]u8 = undefined;
             const help = u16ToUtf8(&hb, std.mem.span(ui.testHelpText));
-            expect(out, std.mem.indexOf(u8, help, "复数模式：") != null, "玩法里应有「复数模式：」这一段");
-            expect(out, std.mem.indexOf(u8, help, "闵可夫斯基模式：") != null, "玩法里应有「闵可夫斯基模式：」这一段");
-            expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "复数模式那段的四种雷应按雷的名字列");
+            expect(out, std.mem.indexOf(u8, help, "圆复数模式：") != null, "玩法里应有「圆复数模式：」这一段");
+            expect(out, std.mem.indexOf(u8, help, "双曲复数模式（闵可夫斯基模式）：") != null, "玩法里应有「双曲复数模式（闵可夫斯基模式）：」这一段");
+            expect(out, std.mem.indexOf(u8, help, "分别是正实雷、负实雷、正虚雷、负虚雷") != null, "圆复数模式那段的四种雷应按雷的名字列");
             expect(out, std.mem.indexOf(u8, help, "正类时雷、负类时雷、正类空雷、负类空雷") != null, "闵可夫斯基模式那段应写正类时雷、负类时雷、正类空雷、负类空雷");
-            expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "复数模式的判据要写清楚");
+            expect(out, std.mem.indexOf(u8, help, "实虚比例符合真实比例或其倒数") != null, "圆复数模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "实、j部的数量等于真实数量") != null, "闵可夫斯基模式的判据要写清楚");
             expect(out, std.mem.indexOf(u8, help, "时空间隔S=√(a²-b²)") != null, "闵可夫斯基模式要说清时空间隔怎么算");
             expect(out, std.mem.indexOf(u8, help, "定义类空单位j²=1") != null, "闵可夫斯基模式要写明「定义类空单位j²=1」");
@@ -996,7 +996,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         }
     }
 
-// 14f 自定义雷区的雷名随模式：闵可夫斯基模式下写「类时雷 / 类空雷」，复数模式写「实雷 / 虚雷」
+// 14f 自定义雷区的雷名随模式：闵可夫斯基模式下写「类时雷 / 类空雷」，圆复数模式写「实雷 / 虚雷」
     {
         ui.testCommand(ui.test_IDM_HYPER_BEGINNER);
         expect(out, ui.testOpenDialog(), "闵可夫斯基模式下自定义对话框应能打开");
@@ -1009,14 +1009,14 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, std.mem.indexOf(u8, labels, "负类空雷") != null, "闵可夫斯基模式下对话框应写「负类空雷」");
         expect(out, std.mem.indexOf(u8, labels, "正虚雷") == null, "闵可夫斯基模式下不该再写「正虚雷」");
         ui.testCloseDialog();
-        ui.testCommand(ui.test_IDM_BEGINNER);   // 回到复数模式，别影响后面的组
-        expect(out, ui.testOpenDialog(), "复数模式下自定义对话框也应能打开");
+        ui.testCommand(ui.test_IDM_BEGINNER);   // 回到圆复数模式，别影响后面的组
+        expect(out, ui.testOpenDialog(), "圆复数模式下自定义对话框也应能打开");
         var lb2: [1024]u8 = undefined;
         const labels2 = u16ToUtf8(&lb2, ui.testDialogTexts());
-        expect(out, std.mem.indexOf(u8, labels2, "正实雷") != null, "复数模式下仍写「正实雷」");
-        expect(out, std.mem.indexOf(u8, labels2, "正虚雷") != null, "复数模式下仍写「正虚雷」");
-        expect(out, std.mem.indexOf(u8, labels2, "正类时雷") == null, "复数模式下不该写「正类时雷」");
-        expect(out, std.mem.indexOf(u8, labels2, "正类空雷") == null, "复数模式下不该写「正类空雷」");
+        expect(out, std.mem.indexOf(u8, labels2, "正实雷") != null, "圆复数模式下仍写「正实雷」");
+        expect(out, std.mem.indexOf(u8, labels2, "正虚雷") != null, "圆复数模式下仍写「正虚雷」");
+        expect(out, std.mem.indexOf(u8, labels2, "正类时雷") == null, "圆复数模式下不该写「正类时雷」");
+        expect(out, std.mem.indexOf(u8, labels2, "正类空雷") == null, "圆复数模式下不该写「正类空雷」");
         ui.testCloseDialog();
         out.writer().print("14f 自定义雷区：雷名随模式（实雷·虚雷 / 类时雷·类空雷）通过\n", .{}) catch {};
     }
@@ -1083,7 +1083,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
 
 // 15c 闵可夫斯基模式：3/4 两种雷换成 j 系列贴图
         gm.mode = .hyper;
-        expect(out, ui.testSprite(S.mine, true, 1) == ui.testSprite(S.mine, false, 1), "闵可夫斯基模式的实雷与复数模式共用贴图");
+        expect(out, ui.testSprite(S.mine, true, 1) == ui.testSprite(S.mine, false, 1), "闵可夫斯基模式的实雷与圆复数模式共用贴图");
         expect(out, ui.testSprite(S.mine, true, 3) != ui.testSprite(S.mine, false, 3), "闵可夫斯基模式的闵可夫斯基雷要换成它自己的贴图");
         expect(out, ui.testSprite(S.flag, true, 3) != ui.testSprite(S.flag, false, 3), "闵可夫斯基模式的闵可夫斯基旗要换成它自己的贴图");
         setup(gm);
@@ -1102,7 +1102,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         gm.boom = @intCast(nbuf[2]);
         gm.open[nbuf[2]] = 1;
         expect(out, ui.testCellSprite(nbuf[2]) == ui.testSprite(S.boom, true, 4), "闵可夫斯基模式踩中的闵可夫斯基雷要用它自己的踩中贴图");
-        expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.boom, false, 4), "闵可夫斯基模式踩中贴图不能沿用复数模式的");
+        expect(out, ui.testCellSprite(nbuf[2]) != ui.testSprite(S.boom, false, 4), "闵可夫斯基模式踩中贴图不能沿用圆复数模式的");
         gm.mode = .complex;
         gm.boom = -1;
         out.writer().print("15 判定贴图：标错雷/标错空格子/标对雷/标对旗/标错旗 + 闵可夫斯基 j 系列 通过\n", .{}) catch {};

@@ -488,7 +488,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
 // ---- 11. 闵可夫斯基模式：显示值集合、贴图覆盖、判据 ----
     {
 // 枚举 495 种邻域组合（四种雷的颗数 n1..n4，总数 ≤ 8）：两套显示值集合都算一遍。
-// 复数模式必须正好得到现有那 24 个值（模型与已发布实现的交叉验证），
+// 圆复数模式必须正好得到现有那 24 个值（模型与已发布实现的交叉验证），
 // 闵可夫斯基模式必须正好得到 39 个值，且每个值在图集里都有贴图。
         var seen_c = [_]bool{false} ** 65;
         var seen_h = [_]bool{false} ** 129;
@@ -519,13 +519,13 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         for (seen_h) |v| {
             if (v) hn += 1;
         }
-        expect(out, cn == g.ACHIEVABLE.len, "复数模式的显示值应为 24 个（与现有贴图一致）");
+        expect(out, cn == g.ACHIEVABLE.len, "圆复数模式的显示值应为 24 个（与现有贴图一致）");
         expect(out, hn == 39, "闵可夫斯基模式的显示值应为 39 个");
         var cplx_bad: u32 = 0;
         for (g.ACHIEVABLE) |D| {
             if (!seen_c[D]) cplx_bad += 1;
         }
-        expect(out, cplx_bad == 0, "复数模式的显示值集合必须正好是 ACHIEVABLE 那 24 个");
+        expect(out, cplx_bad == 0, "圆复数模式的显示值集合必须正好是 ACHIEVABLE 那 24 个");
 // 19 个模长正负成对 + 一个 0；再核对每个值都有贴图、且贴图没有重复占用
         const MAG = [19]i32{ 1, 3, 4, 5, 7, 8, 9, 12, 15, 16, 21, 24, 25, 32, 35, 36, 48, 49, 64 };
         var pair_ok = seen_h[64];
@@ -551,7 +551,7 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
         expect(out, dup == 0, "39 张贴图不该被两个显示值共用");
         note(out, "11 闵可夫斯基显示值集合与贴图覆盖：{s}（组合 {d} 种，闵可夫斯基 {d} 值）\n", .{ if (missing == 0 and dup == 0 and hn == 39) "通过" else "有缺口", combos, hn });
 
-// 显示值算法：a² − b²（复数模式是 a² + b²），负值照算，显示成根式加 i
+// 显示值算法：a² − b²（圆复数模式是 a² + b²），负值照算，显示成根式加 i
         var h: g.Game = .{};
         h.mode = .hyper;
         const clues = [_]struct { t: [4]u8, want: i32 }{
@@ -576,10 +576,10 @@ pub fn run(out: *std.ArrayList(u8)) u32 {
             if (A.hnum_by_D[idx] == 0xFFFF) clue_bad += 1;
         }
         expect(out, clue_bad == 0, "闵可夫斯基显示值必须是 a² − b²（12 组配比逐一核对）");
-// 同一个配比在复数模式下应得 a² + b²（这里 a=1、b=2）
+// 同一个配比在圆复数模式下应得 a² + b²（这里 a=1、b=2）
         h.mode = .complex;
         hyperPlace(&h, .{ 2, 1, 3, 1 }, false);
-        expect(out, h.clue[12] == 5, "同一配比在复数模式下应是 a² + b²（1+4=5）");
+        expect(out, h.clue[12] == 5, "同一配比在圆复数模式下应是 a² + b²（1+4=5）");
         h.mode = .hyper;
         note(out, "11b 闵可夫斯基显示值算法（a² − b²）：{s}\n", .{if (clue_bad == 0) "通过" else "有偏差"});
 

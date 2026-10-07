@@ -7,12 +7,12 @@ pub const MAX_CELLS: usize = MAX_W * MAX_H;
 pub const MAX_MINES: usize = 999;
 
 /// 四种雷：(实部, 虚部)。两个模式共用这四种雷，只换单位：
-///   复数模式   i² = −1：+1、−1、+i、−i，显示值 a² + b²（恒非负）
+///   圆复数模式   i² = −1：+1、−1、+i、−i，显示值 a² + b²（恒非负）
 ///   闵可夫斯基模式   j² = +1：+1、−1、+j、−j，显示值 a² − b²（可负，负的显示成"根式 + i 单位"）
 pub const TYPES = [4][2]i32{ .{ 1, 0 }, .{ -1, 0 }, .{ 0, 1 }, .{ 0, -1 } };
 /// 玩法模式
 pub const Mode = enum(u8) { complex = 0, hyper = 1 };
-/// 24 个可能的显示值（复数模式）
+/// 24 个可能的显示值（圆复数模式）
 pub const ACHIEVABLE = [24]u16{ 0, 1, 2, 4, 5, 8, 9, 10, 13, 16, 17, 18, 20, 25, 26, 29, 32, 34, 36, 37, 40, 49, 50, 64 };
 
 pub const Preset = struct { w: u16, h: u16, mines: u16, label: []const u8 };
@@ -62,7 +62,7 @@ pub const Game = struct {
 /// 默认 false = 推荐判据（|a|、|b| 分别相符，即四种符号组合任选）。见 文档/双曲复数模式.md §3。
     judge_loose: bool = false,
     mine: [MAX_CELLS]u8 = [_]u8{0} ** MAX_CELLS,
-/// 显示值：复数模式存 a²+b²（0…64），闵可夫斯基模式存 a²−b²（−64…64）
+/// 显示值：圆复数模式存 a²+b²（0…64），闵可夫斯基模式存 a²−b²（−64…64）
     clue: [MAX_CELLS]i16 = [_]i16{-1} ** MAX_CELLS,
     open: [MAX_CELLS]u8 = [_]u8{0} ** MAX_CELLS,
     flag: [MAX_CELLS]u8 = [_]u8{0} ** MAX_CELLS,
@@ -386,7 +386,7 @@ pub const Game = struct {
     }
 
 /// 判据：旗帜数 = 邻域真实雷数，且"显示值区分不出来的差别"允许存在。
-///   复数模式：显示值 a²+b² 看不出整体取负、也看不出实虚交换 → 允许实虚比例等于真值比例或其倒数。
+///   圆复数模式：显示值 a²+b² 看不出整体取负、也看不出实虚交换 → 允许实虚比例等于真值比例或其倒数。
 ///   闵可夫斯基模式：显示值 a²−b² 看不出 a、b 各自取负（交换会变号，藏不住）→ 要求 |a|、|b| 分别相符，
 ///             也就是四种符号组合任选；judge_loose 时只要求 a²−b² 相同（备选判据，仅 D=0、±16 有别）。
     pub fn matchComboTruth(self: *const Game, cell: usize) bool {

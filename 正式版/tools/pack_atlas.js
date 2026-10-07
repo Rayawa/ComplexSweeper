@@ -29,22 +29,22 @@ const W = wi >= 0 ? Number(argv[wi + 1]) : 208;
 
 /* 中文文件名 → 槽位名。h 前缀 = 闵可夫斯基模式专用（1/2 两种实雷两个模式共用，所以只有 3/4 有 h 版） */
 const MAP = {
-  正类空雷: 'hmine_3', 负类空雷: 'hmine_4',
-  正类空旗: 'hflag_3', 负类空旗: 'hflag_4',
-  踩中正类空雷: 'hboom_3', 踩中负类空雷: 'hboom_4',
-  标错正类空雷: 'hwrong_3', 标错负类空雷: 'hwrong_4',
+  正类时雷: 'hmine_3', 负类时雷: 'hmine_4',
+  正类时旗: 'hflag_3', 负类时旗: 'hflag_4',
+  踩中正类时雷: 'hboom_3', 踩中负类时雷: 'hboom_4',
+  标错正类时雷: 'hwrong_3', 标错负类时雷: 'hwrong_4',
   标对正实雷: 'right_1', 标对负实雷: 'right_2', 标对正虚雷: 'right_3', 标对负虚雷: 'right_4',
-  标对正类空雷: 'hright_3', 标对负类空雷: 'hright_4',
+  标对正类时雷: 'hright_3', 标对负类时雷: 'hright_4',
   标对正实旗: 'rightflag_1', 标对负实旗: 'rightflag_2', 标对正虚旗: 'rightflag_3', 标对负虚旗: 'rightflag_4',
-  标对正类空旗: 'hrightflag_3', 标对负类空旗: 'hrightflag_4',
+  标对正类时旗: 'hrightflag_3', 标对负类时旗: 'hrightflag_4',
   标错正实旗: 'wrongflag_1', 标错负实旗: 'wrongflag_2', 标错正虚旗: 'wrongflag_3', 标错负虚旗: 'wrongflag_4',
-  标错正类空旗: 'hwrongflag_3', 标错负类空旗: 'hwrongflag_4',
+  标错正类时旗: 'hwrongflag_3', 标错负类时旗: 'hwrongflag_4',
   标错空格子: 'wrongblank',
 };
 /* 改名前的叫法是「双曲雷 / 双曲旗」，磁盘上现存的单图文件名还是那一套，
    所以两种写法都收：不改文件名也能收进来，改成新名字也照样认。 */
 for (const [k, v] of Object.entries(MAP)) {
-  const alt = k.replace(/类空/g, '双曲');
+  const alt = k.replace(/类时/g, '双曲');
   if (alt !== k && !MAP[alt]) MAP[alt] = v;
 }
 

@@ -9,7 +9,7 @@
 		"SELECT_BUILD_PRODUCT":"default",
 		"BUNDLE_NAME":"top.rayawa.complexsweeper",
 		"BUILD_PATH":{
-			"OUTPUT_PATH":"/Users/raychen/Develop/ComplexSweeper-HarmonyOS/build/outputs/default"
+			"OUTPUT_PATH":"/Users/raychen/Develop/ComplexSweeper/ComplexSweeper-HarmonyOS/build/outputs/default"
 		},
 		"SELECT_BUILD_MODE":""
 	},

@@ -22,8 +22,12 @@ export struct LedReadout {
   slots: number = 4;
   /** 最后一格是 i 单位（正虚雷、负虚雷用） */
   imagUnit: boolean = false;
-  /** 单格宽度；高度按贴图比例 23:13 算 */
-  cellWidth: number = 13;
+  /**
+   * 单格宽度；高度按贴图比例 23:13 算。
+   * 必须是 @Prop：矮窗（横屏、分屏、自由窗口）下父组件会把数码管一起收小，
+   * 用普通变量的话改不动，表头就会把棋盘区顶掉。
+   */
+  @Prop cellWidth: number = 13;
   /** 还没开局时不显示任何数字 —— 那时各类雷的颗数还没抽出来 */
   @Prop blankAll: boolean = false;
 

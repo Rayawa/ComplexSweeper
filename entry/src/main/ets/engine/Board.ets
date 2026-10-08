@@ -11,18 +11,12 @@ export const ACT_JUDGE_FAIL: number = 3;
 
 /** 结算复盘时每一格要画什么 */
 export const MARK_NONE: number = 0;
-/** 给一个根本不是雷的格子插了旗 */
+/** 给一个根本不是雷的格子插了旗 —— 位置标错了，旗 + 红叉 */
 export const MARK_WRONG_BLANK: number = 1;
-/** 插错了，按真实雷型出图（雷 + 红叉） */
-export const MARK_WRONG: number = 2;
-/** 失败复盘：插对了，按真实雷型出图（雷 + 绿勾） */
-export const MARK_RIGHT: number = 3;
-/** 通关复盘：插对了，按玩家插的那型出图（旗 + 绿勾） */
-export const MARK_RIGHT_FLAG: number = 4;
-/** 通关复盘：插错了，旗 + 红叉 */
-export const MARK_WRONG_FLAG: number = 5;
-/** 失败复盘：没插旗的雷，亮出来 */
-export const MARK_MINE: number = 6;
+/** 插旗的格子确实是雷 —— 位置标对了，按玩家插的那型出图（旗 + 绿勾） */
+export const MARK_RIGHT_FLAG: number = 2;
+/** 没插旗的雷，结算时亮出来 */
+export const MARK_MINE: number = 3;
 
 /**
  * mulberry32。和参考实现用同一个算法：同一种子出同一个棋盘，
@@ -101,7 +95,7 @@ export class Cell {
  *   - 插了旗的格子翻不开，连片展开也绕开它 —— 旗子保护格子；
  *   - 数字格上可以"展开"：邻域旗数等于真实雷数、且实虚比例符合真实比例
  *     或其倒数时，一次性翻开周围所有未插旗的格子。这是用来试探抵消对的。
- *   - 翻开所有非雷格就赢。胜负都要复盘标对/标错的旗。
+ *   - 翻开所有非雷格就赢。结算把雷全亮出来，旗只看位置标对错（不评判雷型）。
  */
 export class Board {
   /** 列数 */
@@ -493,29 +487,22 @@ export class Board {
   /**
    * 结算复盘：把每一格该画什么写回格子自身。
    *
-   * 输了按真实雷型出图（雷 + 红叉 / 绿勾），赢了按玩家插的那型出图（旗 + 叉 / 勾）——
-   * 因为赢的时候所有非雷格都已经翻开，留在场上的旗必然都在雷上，此时玩家想看的是
-   * "我自己标的对不对"。
+   * 只看旗插在哪，不看插的是哪一型 —— 旗是试探抵消对的工具，不是"这颗雷是什么"的
+   * 断言，要玩家把雷型也猜中才算标对没有道理。胜负一视同仁：结算就把答案摊开，
+   * 没插旗的雷一起亮出来。
    */
   private endReveal(): void {
     for (let i = 0; i < this.cells.length; i++) {
       const cell: Cell = this.cells[i];
       cell.endMark = MARK_NONE;
       if (cell.flag === 0) {
-        // 没插旗的雷：失败时亮出来；赢的时候保持未翻开（那是玩家没标的，没什么可复盘）
-        if (!this.won && cell.mineKind >= 0 && !cell.open) {
+        // 没插旗的雷亮出来；踩中的那颗已经翻开了，走爆炸贴图
+        if (cell.mineKind >= 0 && !cell.open) {
           cell.endMark = MARK_MINE;
         }
         continue;
       }
-      const mine: number = cell.mineKind + 1;   // 0 = 其实不是雷
-      if (this.won) {
-        cell.endMark = (mine !== 0 && cell.flag === mine) ? MARK_RIGHT_FLAG : MARK_WRONG_FLAG;
-      } else if (mine === 0) {
-        cell.endMark = MARK_WRONG_BLANK;
-      } else {
-        cell.endMark = (cell.flag === mine) ? MARK_RIGHT : MARK_WRONG;
-      }
+      cell.endMark = cell.mineKind >= 0 ? MARK_RIGHT_FLAG : MARK_WRONG_BLANK;
     }
   }
 }

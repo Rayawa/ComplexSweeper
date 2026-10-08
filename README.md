@@ -3,7 +3,8 @@
 > 复扫雷 · 扫雷，但雷是复数
 
 扫雷，但雷是复数：棋盘上有四种雷，格子上的数字是它周围所有雷之和的模长。
-翻开所有非雷格子就胜利。结局会用勾和叉显示标对、标错的雷，并播放对应音效。
+翻开所有非雷格子就胜利。结局会亮出全部雷的位置，并给插下的旗标对错：
+绿勾表示这一格确实是雷，红叉表示插在非雷上 —— 只看位置，不评判旗插成了哪一型。
 
 **HarmonyOS 应用**：ArkTS + ArkUI，纯原生无第三方依赖。
 
@@ -59,7 +60,7 @@
 | --- | --- |
 | 语言 / 框架 | ArkTS + ArkUI（HarmonyOS），纯原生、无第三方依赖 |
 | 界面 | `@kit.UIDesignKit` 的 `HdsNavigation`（沉浸标题栏）+ `HdsTabs`（悬浮沉浸底栏） |
-| 渲染 | 棋盘与数字全部是上游的像素贴图，按原始尺寸 16vp 显示 |
+| 渲染 | 棋盘与数字全部是上游的像素贴图，格子边长按可用空间压到 16–36vp（16vp 是贴图原尺寸，下限），放大一律最近邻不插值 |
 | 音效 / 触感 | `SoundPool` 音效池、`ohos.permission.VIBRATE` 轻振 |
 | 引擎 | 全整数运算（棋盘存 a²+b²，不碰浮点），mulberry32 随机数 |
 
@@ -95,8 +96,9 @@ entry/src/main/ets/
 用 **DevEco Studio** 打开工程，在 `File > Project Structure > Signing Configs`
 勾选自动签名（需要登录华为开发者账号），之后即可构建安装到真机。
 
-音效用的 `SoundPool` / `AudioCore` 在部分设备类型上没有 syscap，编译会有两条提示；
-`SoundBoard` 全程 try/catch，初始化失败就静音，不影响游戏。
+音效用的 `SoundPool` / `AudioCore` 在部分设备类型上没有 syscap，编译会有两条提示；状态栏
+配色用的 `setWindowSystemBarProperties` 对 2in1 同样不可用，也有一条提示。两处都是失败即
+静默降级（静音 / 保持系统默认配色），不影响游戏。
 
 ## 素材与授权
 

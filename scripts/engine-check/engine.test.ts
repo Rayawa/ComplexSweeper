@@ -183,13 +183,15 @@ if (blankCells === 0 || cancellingZeros === 0) {
 // ---------- 6. 结算复盘 ----------
 {
   const b = freshBoard(9, 9, 10, 2024, 4, 4);
-  // 插两面旗：一面插在雷上且类型正确，一面插在非雷上
+  // 插两面旗：一面插在雷上，一面插在非雷上
   let rightIdx = -1, wrongIdx = -1;
   for (let i = 0; i < b.cells.length; i++) {
     if (b.cells[i].mineKind >= 0 && rightIdx < 0 && !b.cells[i].open) rightIdx = i;
     if (b.cells[i].mineKind < 0 && wrongIdx < 0 && !b.cells[i].open) wrongIdx = i;
   }
-  for (let k = 0; k < b.cells[rightIdx].mineKind + 1; k++) {
+  // 故意插成和真雷型对不上的那一种：结算只看位置，插在雷上就该算标对
+  b.cycleFlag(Math.floor(rightIdx / b.w), rightIdx % b.w);
+  if (b.cells[rightIdx].flag === b.cells[rightIdx].mineKind + 1) {
     b.cycleFlag(Math.floor(rightIdx / b.w), rightIdx % b.w);
   }
   b.cycleFlag(Math.floor(wrongIdx / b.w), wrongIdx % b.w);
@@ -206,11 +208,21 @@ if (blankCells === 0 || cancellingZeros === 0) {
   }
   if (!b.isOver() || b.isWon()) throw new Error('踩雷后应当判负');
 
-  if (b.cells[rightIdx].endMark !== MARK_RIGHT) throw new Error('插对的旗没有标成 MARK_RIGHT');
+  if (b.cells[rightIdx].endMark !== MARK_RIGHT_FLAG) throw new Error('插在雷上的旗没有标成 MARK_RIGHT_FLAG');
   if (b.cells[wrongIdx].endMark !== MARK_WRONG_BLANK) throw new Error('插在非雷上的旗没有标成 MARK_WRONG_BLANK');
   if (b.cells[mineIdx].endMark !== MARK_NONE) throw new Error('踩中的那颗不该有复盘标记');
   if (!b.cells[mineIdx].exploded) throw new Error('踩中的那颗没标 exploded');
-  console.log('✓ 失败复盘：插对的标绿勾、插在非雷上的标红叉、踩中的那颗标 exploded');
+  // 没插旗的雷一律亮出来
+  let shown = 0;
+  for (let i = 0; i < b.cells.length; i++) {
+    const cell = b.cells[i];
+    if (cell.mineKind < 0 || cell.flag !== 0 || cell.open) continue;
+    if (cell.endMark !== MARK_MINE) throw new Error('失败结算时没插旗的雷没有亮出来');
+    shown++;
+  }
+  if (shown === 0) throw new Error('这一局应该还有没插旗的雷');
+  console.log(`✓ 失败复盘：插在雷上就标绿勾（不看雷型）、插在非雷上标红叉、`
+    + `${shown} 颗没插旗的雷亮出来、踩中的那颗标 exploded`);
 }
 
 // ---------- 7. 通关复盘 ----------
@@ -240,6 +252,40 @@ if (blankCells === 0 || cancellingZeros === 0) {
     if (cell.endMark !== MARK_RIGHT_FLAG) throw new Error('通关时插对的旗没标成 MARK_RIGHT_FLAG');
   }
   console.log('✓ 通关复盘：所有留下的旗都在雷上，全部标成绿勾');
+}
+
+// ---------- 8. 通关时没插旗的雷也亮出来 ----------
+{
+  const b = freshBoard(9, 9, 10, 606, 4, 4);
+  // 只插一面旗，而且故意插成和真雷型对不上的那种，其余雷都不插
+  let flagged = -1;
+  for (let i = 0; i < b.cells.length; i++) {
+    if (b.cells[i].mineKind >= 0) {
+      flagged = i;
+      break;
+    }
+  }
+  b.cycleFlag(Math.floor(flagged / b.w), flagged % b.w);
+  if (b.cells[flagged].flag === b.cells[flagged].mineKind + 1) {
+    b.cycleFlag(Math.floor(flagged / b.w), flagged % b.w);
+  }
+  // 直接翻开所有非雷格 → 通关
+  for (let i = 0; i < b.cells.length && !b.isOver(); i++) {
+    if (b.cells[i].mineKind < 0 && !b.cells[i].open) {
+      b.reveal(Math.floor(i / b.w), i % b.w);
+    }
+  }
+  if (!b.isWon()) throw new Error('翻开所有非雷格后应当通关');
+  if (b.cells[flagged].endMark !== MARK_RIGHT_FLAG) throw new Error('通关时插在雷上的旗没有标成 MARK_RIGHT_FLAG');
+  let shown = 0;
+  for (let i = 0; i < b.cells.length; i++) {
+    const cell = b.cells[i];
+    if (cell.mineKind < 0 || cell.flag !== 0) continue;
+    if (cell.endMark !== MARK_MINE) throw new Error('通关时没插旗的雷没有亮出来');
+    shown++;
+  }
+  if (shown === 0) throw new Error('这一局应该还有没插旗的雷');
+  console.log(`✓ 通关复盘：插旗的雷只看位置标绿勾，另外 ${shown} 颗没插旗的雷也亮出来了`);
 }
 
 // ---------- 8. 三档难度 ----------

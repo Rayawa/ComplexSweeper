@@ -34,6 +34,32 @@ const MAX_SECONDS: number = 9999;
 /** 贴图原始尺寸，格子不能再小 —— 像素画缩着画会糊 */
 const MIN_EDGE: number = 16;
 const MAX_EDGE: number = 36;
+/** 棋盘面板四周各有 3 内边距 + 3 边框，算尺寸时格子之外还要留出这么多 */
+const PANEL_BOX: number = 12;
+
+/**
+ * 数码管单格宽度。表头的高度就是它撑起来的：一行读数高 23/13×单格再加 4 内边距，
+ * 四个计雷器竖排，最后加上表头的 6 内边距与 3 边框：
+ *
+ *     表头高度 ≈ HEADER_PER_LED × 单格 + HEADER_BASE
+ *
+ * 表头一高，棋盘区就矮，所以这个数是"数字够大"和"别抢棋盘地方"的折中。
+ * 18 在竖屏手机上算下来还剩得下整块初级棋盘；13 是贴图原宽，再小数字就糊了。
+ */
+const LED_CELL: number = 18;
+const LED_MIN_CELL: number = 13;
+const HEADER_PER_LED: number = 4 * 23 / 13;
+const HEADER_BASE: number = 28;
+/**
+ * 表头最多占窗口高度的四分之一。矮窗（横屏、分屏、自由窗口）按这个反推数码管能画多大，
+ * 不然表头会把棋盘区整个吃掉。
+ */
+const HEADER_HEIGHT_SHARE: number = 0.25;
+/** 人脸按钮的边长（贴图 24×24） */
+const FACE_SIZE: number = 46;
+/** 「关于」弹层右上角关闭按钮的圆底直径，跟标题栏那颗系统菜单按钮实测一样大 */
+const CLOSE_BUTTON_SIZE: number = 36;
+
 /**
  * 沉浸式标题栏和悬浮底栏都浮在内容之上、不占内容区的布局，所以内容要自己让位。
  * 这两个数值取自 Dashboard 工程里页面用的留白量（顶部 Blank 100、底部 110）——
@@ -108,6 +134,8 @@ struct Index {
   /** 棋盘区域的实测尺寸，用来把格子压到刚好放得下 */
   @State boardAreaWidth: number = estimateBoardWidth();
   @State boardAreaHeight: number = 0;
+  /** 内容区的实测高度（等于窗口高度），矮窗时用来决定表头和数码管能有多大 */
+  @State pageHeight: number = 0;
   /** 网格的行列下标，开新局时按新尺寸重建 */
   @State rowIndexes: number[] = range(DIFFICULTIES[0].h);
   @State colIndexes: number[] = range(DIFFICULTIES[0].w);
@@ -333,16 +361,23 @@ struct Index {
   // ---------------- 排版 ----------------
 
   /**
-   * 格子边长：按实测宽度刚好放得下，并夹在 [16, 36]。
+   * 格子边长：宽度和高度都要放得下，再夹在 [16, 36]。
+   *
    * 16 是贴图的原始尺寸 —— 再小就得把像素画缩着画，会糊。
-   * 高级 30 列在手机上放不下 16vp，于是棋盘横向滚动。
+   * 只看宽度的话，横屏、分屏这类矮窗会把整块棋盘挤进滚动区、一屏只看得到半张；
+   * 所以高度也一起算 —— 一屏能看全比格子大更实用。
+   * 高级 30 列在手机上按宽度算还不到 16，于是棋盘横向滚动。
    */
   private edge(): number {
     const d: Difficulty = DIFFICULTIES[this.difficultyIndex];
     if (this.boardAreaWidth <= 0) {
       return MIN_EDGE;
     }
-    const fits: number = Math.floor((this.boardAreaWidth - 8) / d.w);
+    const byWidth: number = Math.floor((this.boardAreaWidth - 8) / d.w);
+    const byHeight: number = this.boardAreaHeight > 0
+      ? Math.floor((this.boardAreaHeight - PANEL_BOX) / d.h)
+      : MAX_EDGE;
+    const fits: number = Math.min(byWidth, byHeight);
     if (fits < MIN_EDGE) {
       return MIN_EDGE;
     }
@@ -357,22 +392,58 @@ struct Index {
     return this.edge() * this.board.h;
   }
 
-  /** 棋盘比可视区矮时上下平分余量，视觉上才是真的居中 */
-  private boardPadTop(): number {
-    const slack: number = this.boardAreaHeight - this.boardHeight() - 8;
-    return slack > 0 ? Math.floor(slack / 2) : 0;
+  /**
+   * 横向滚动区的可视宽度。
+   *
+   * boardAreaWidth 是外层竖向滚动区的实测宽度减 8 得来的，其中 4 属于面板左
+   * 内边距 + 边框，所以再减 4 正好是里面那条横向滚动区的宽度。
+   */
+  private boardInnerWidth(): number {
+    return this.boardAreaWidth - 4;
   }
 
   /**
-   * 左右也要平分余量。
+   * 棋盘容器的宽度：装得下就撑满可视宽度，装不下（高级 30 列）就按网格本身来。
    *
-   * 棋盘是定宽的，放进满宽的滚动区里默认靠左，右边留一条，看上去就像整片格子没对齐。
-   * 放不下时（高级 30 列）返回 0，交给横向滚动。
+   * 居中交给容器自己的对齐，不能用 margin 硬推 —— 横向 Scroll 本来就会把比可视区窄的
+   * 内容居中，再叠一层 margin 就偏出去了（实测偏右约半个余量，左右一边宽一边窄）。
    */
-  private boardPadLeft(): number {
-    const inner: number = this.boardAreaWidth - 4;
-    const slack: number = inner - this.boardWidth();
-    return slack > 0 ? Math.floor(slack / 2) : 0;
+  private boardBoxWidth(): number {
+    return Math.max(this.boardWidth(), this.boardInnerWidth());
+  }
+
+  /** 棋盘面板的总高度：网格 + 四周各 3 内边距 + 3 边框 */
+  private boardPanelHeight(): number {
+    return this.boardHeight() + PANEL_BOX;
+  }
+
+  /**
+   * 棋盘容器的总高度：装得下就撑满可视高度，装不下（矮窗里放不下整块棋盘）就按面板本身来。
+   *
+   * 和横向同理：Scroll 会把比可视区小的子内容自己在主轴方向居中，所以这里把尺寸钉死成
+   * 可视区大小，居中交给容器的 justifyContent 去做。要是反过来用 padding 顶，
+   * 就成了"padding + 居中"两遍，面板会明显偏下（实测偏下 20 上下）。
+   */
+  private boardBoxHeight(): number {
+    return Math.max(this.boardPanelHeight(), this.boardAreaHeight);
+  }
+
+  /**
+   * 数码管单格宽度：标准值就是 LED_CELL，矮窗按"表头不超过窗口四分之一"往回收，
+   * 收到贴图原宽为止。竖屏手机上算下来就是 LED_CELL。
+   */
+  private ledCell(): number {
+    const h: number = this.pageHeight;
+    if (h <= 0) {
+      return LED_CELL;
+    }
+    const cap: number = Math.floor((h * HEADER_HEIGHT_SHARE - HEADER_BASE) / HEADER_PER_LED);
+    return Math.max(LED_MIN_CELL, Math.min(LED_CELL, cap));
+  }
+
+  /** 计雷器上那面小旗的边长，按 16/13 跟着数码管等比走（贴图 16×16、数码管 13×23） */
+  private ledIcon(): number {
+    return Math.round(this.ledCell() * 16 / 13);
   }
 
   /** 这一类雷还剩几颗没标。负数类型（-1、-i）显示成负数，每插一颗就朝零走。 */
@@ -388,21 +459,26 @@ struct Index {
   Counter(t: number) {
     Row() {
       Image(flagSprite(t + 1))
-        .width(18)
-        .height(18)
+        .width(this.ledIcon())
+        .height(this.ledIcon())
         .interpolation(ImageInterpolation.None)
       LedReadout({
         value: this.counterValue(t),
         slots: 4,
         imagUnit: t >= 2,
-        cellWidth: 13,
+        cellWidth: this.ledCell(),
         blankAll: !this.board.isStarted()
       })
     }
     .padding({ left: 2, right: 2 })
   }
 
-  /** 经典表头：左边四个计雷器竖排，右边人脸 + 计时 */
+  /**
+   * 经典表头：左边四个计雷器竖排，中间人脸 + 计时。
+   *
+   * 三段等分（各 layoutWeight(1)）：右边空出和计雷器列一样宽的一块，人脸那列才落在
+   * 面板正中。原来只在两侧各放一个 Blank，人脸会被计雷器挤到偏右，屏幕越宽偏得越多。
+   */
   @Builder
   HeaderPanel() {
     Row() {
@@ -412,21 +488,23 @@ struct Index {
         this.Counter(2)
         this.Counter(3)
       }
-
-      Blank()
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
 
       Column({ space: 6 }) {
         Image(faceSprite(this.faceKind()))
-          .width(46)
-          .height(46)
+          .width(FACE_SIZE)
+          .height(FACE_SIZE)
           .interpolation(ImageInterpolation.None)
           .onClick(() => {
             this.newGame(this.difficultyIndex);
           })
-        LedReadout({ value: this.elapsed, slots: 4, cellWidth: 13 })
+        LedReadout({ value: this.elapsed, slots: 4, cellWidth: this.ledCell() })
       }
+      .layoutWeight(1)
 
       Blank()
+        .layoutWeight(1)
     }
     .width('100%')
     .padding(6)
@@ -483,8 +561,8 @@ struct Index {
    * 棋盘：经典凹陷面板包住网格。
    *
    * 三层结构，宽度一层比一层确定：
-   *   外层 Column（100% 宽）→ 横向 Scroll（100% 宽、显式 clip）→ 网格 Column（定宽 boardWidth）
-   * 网格比可视区宽时（高级 30 列）横向滚动；比可视区窄时靠 margin 居中。
+   *   外层 Column（100% 宽）→ 横向 Scroll（100% 宽、显式 clip）→ 网格容器（定宽）
+   * 网格比可视区宽时（高级 30 列）横向滚动；比可视区窄时容器撑满，网格在里面居中。
    */
   @Builder
   BoardPanel() {
@@ -493,7 +571,8 @@ struct Index {
         this.BoardPanelInner()
       }
       .width('100%')
-      .padding({ top: this.boardPadTop() })
+      .height(this.boardBoxHeight())
+      .justifyContent(FlexAlign.Center)
     }
     .scrollable(ScrollDirection.Vertical)
     .scrollBar(BarState.Off)
@@ -512,8 +591,9 @@ struct Index {
         Column() {
           this.BoardGrid()
         }
-        .width(this.boardWidth())
-        .margin({ left: this.boardPadLeft() })
+        // 容器宽度已经保证不小于可视宽度，居中就交给对齐，不再用 margin 硬推
+        .width(this.boardBoxWidth())
+        .alignItems(HorizontalAlign.Center)
       }
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Auto)
@@ -580,6 +660,10 @@ struct Index {
     // 顶部让开沉浸标题栏，底部让开悬浮底栏
     .padding({ left: 8, right: 8, top: TITLE_BAR_INSET, bottom: FLOATING_BAR_ROOM })
     .backgroundColor($r('app.color.classic_face'))
+    .onAreaChange((_oldArea: Area, newArea: Area) => {
+      // 这里量到的是整个窗口的高度（沉浸布局下内容区就是整屏），表头按它决定大小
+      this.pageHeight = Number.parseFloat(newArea.height.toString());
+    })
   }
 
   @Builder
@@ -594,22 +678,21 @@ struct Index {
   @Builder
   SheetTitleBar() {
     Row() {
-      Column({ space: 2 }) {
-        Text('关于')
-          .fontSize(17)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.classic_dark'))
-        Text('复扫雷 · ComplexSweeper')
-          .fontSize(12)
-          .fontColor($r('app.color.classic_shadow'))
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
+      Text('关于')
+        .fontSize(17)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.classic_dark'))
+        .layoutWeight(1)
 
+      // 关掉按钮画成圆底，和标题栏那颗「关于」一个样子 —— 光一支叉子没有边界，
+      // 压在银灰面板上不像个能按的东西
       SymbolGlyph($r('sys.symbol.xmark'))
         .fontSize(20)
         .fontColor([$r('app.color.classic_dark')])
-        .padding(8)
+        .width(CLOSE_BUTTON_SIZE)
+        .height(CLOSE_BUTTON_SIZE)
+        .backgroundColor($r('sys.color.comp_background_tertiary'))
+        .borderRadius(CLOSE_BUTTON_SIZE / 2)
         .accessibilityText('关闭')
         .onClick(() => {
           this.showTutorial = false;

@@ -1,4 +1,4 @@
-import { Cell, MARK_MINE, MARK_NONE, MARK_RIGHT, MARK_RIGHT_FLAG, MARK_WRONG, MARK_WRONG_BLANK, MARK_WRONG_FLAG } from '../engine/Board';
+import { Cell, MARK_MINE, MARK_RIGHT_FLAG, MARK_WRONG_BLANK } from '../engine/Board';
 import { hasNumSprite } from './Sprites';
 import {
   blankSprite,
@@ -8,10 +8,7 @@ import {
   mineSprite,
   numSprite,
   rightFlagSprite,
-  rightSprite,
-  wrongBlankSprite,
-  wrongFlagSprite,
-  wrongSprite
+  wrongBlankSprite
 } from './Sprites';
 
 /**
@@ -42,14 +39,9 @@ export struct CellView {
     switch (this.cell.endMark) {
       case MARK_WRONG_BLANK:
         return wrongBlankSprite();
-      case MARK_WRONG:
-        return wrongSprite(kind);
-      case MARK_RIGHT:
-        return rightSprite(kind);
       case MARK_RIGHT_FLAG:
-        return rightFlagSprite(kind);
-      case MARK_WRONG_FLAG:
-        return wrongFlagSprite(kind !== 0 ? kind : this.cell.flag);
+        // 按玩家自己插的那型出图：结算只看位置，不评判雷型对不对得上
+        return rightFlagSprite(this.cell.flag);
       case MARK_MINE:
         return mineSprite(kind);
       default:

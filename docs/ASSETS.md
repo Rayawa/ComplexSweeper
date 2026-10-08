@@ -36,9 +36,10 @@ upstream's own tool into `entry/src/main/resources/rawfile/sounds/`.*
 | `flag_1`…`flag_4` | 四种旗帜（正实 / 负实 / 正虚 / 负虚），由原版旗帜按类型做色相调整 / four flag variants, hue-shifted from the original flag |
 | `mine_1`…`mine_4` | 四种雷，同上 / four mine variants, same treatment |
 | `boom_1`…`boom_4` | 踩中的四种雷（同色雷 + 红底）/ the four detonated mines (mine on red background) |
-| `wrong_1`…`wrong_4` | 标错的雷（按真实雷型出图 + 红叉）/ incorrectly flagged mines, shown by their true type with a red cross |
-| `right_1`…`right_4` | 标对的雷（按真实雷型出图 + 绿勾）/ correctly flagged mines, true type with a green check |
-| `wrongflag_1`…`wrongflag_4` / `rightflag_1`…`rightflag_4` | 终局复盘的旗（旗 + 红叉 / 绿勾）/ end-of-game flag sprites (flag with cross / check) |
+| `wrong_1`…`wrong_4` | 标错的雷（按真实雷型出图 + 红叉）。本移植版结算只看位置，用不上这几张 / incorrectly flagged mines, true type with a red cross — unused by this port, whose end screen only judges position |
+| `right_1`…`right_4` | 标对的雷（按真实雷型出图 + 绿勾）。同上，用不上 / correctly flagged mines, true type with a green check — likewise unused |
+| `wrongflag_1`…`wrongflag_4` | 终局复盘的旗（旗 + 红叉）。同上，用不上 / end-of-game flag with a cross — likewise unused |
+| `rightflag_1`…`rightflag_4` | 终局复盘的旗（旗 + 绿勾），本移植版结算就用这张 / end-of-game flag with a green check — the one this port uses |
 | `wrongblank` | 给一个根本不是雷的格子插了旗 / a flag placed on a cell that is not a mine |
 | `face_normal` / `face_down` / `face_scan` / `face_dead` / `face_win` | 五张脸（风格取自原版笑脸，重绘）/ five faces (redrawn in the style of the original smiley) |
 

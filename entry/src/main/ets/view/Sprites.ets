@@ -113,35 +113,7 @@ export function boomSprite(t: number): Resource {
   }
 }
 
-/** 插错了：按真实雷型出图，雷身上画红叉 */
-export function wrongSprite(t: number): Resource {
-  switch (t) {
-    case 1:
-      return $r('app.media.cw_wrong_1');
-    case 2:
-      return $r('app.media.cw_wrong_2');
-    case 3:
-      return $r('app.media.cw_wrong_3');
-    default:
-      return $r('app.media.cw_wrong_4');
-  }
-}
-
-/** 插对了：按真实雷型出图，雷身上画绿勾 */
-export function rightSprite(t: number): Resource {
-  switch (t) {
-    case 1:
-      return $r('app.media.cw_right_1');
-    case 2:
-      return $r('app.media.cw_right_2');
-    case 3:
-      return $r('app.media.cw_right_3');
-    default:
-      return $r('app.media.cw_right_4');
-  }
-}
-
-/** 通关复盘：插对的旗，旗上画绿勾 */
+/** 结算：插对的旗（插在雷上），按玩家插的那型出图，旗上画绿勾 */
 export function rightFlagSprite(t: number): Resource {
   switch (t) {
     case 1:
@@ -155,21 +127,7 @@ export function rightFlagSprite(t: number): Resource {
   }
 }
 
-/** 通关复盘：插错的旗，旗上画红叉 */
-export function wrongFlagSprite(t: number): Resource {
-  switch (t) {
-    case 1:
-      return $r('app.media.cw_wrongflag_1');
-    case 2:
-      return $r('app.media.cw_wrongflag_2');
-    case 3:
-      return $r('app.media.cw_wrongflag_3');
-    default:
-      return $r('app.media.cw_wrongflag_4');
-  }
-}
-
-/** 失败复盘：给一个根本不是雷的格子插了旗 */
+/** 结算：给一个根本不是雷的格子插了旗，旗上画红叉 */
 export function wrongBlankSprite(): Resource {
   return $r('app.media.cw_wrongblank');
 }

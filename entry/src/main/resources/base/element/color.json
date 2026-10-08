@@ -1,0 +1,92 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#C0C0C0"
+    },
+    {
+      "name": "classic_face",
+      "value": "#C0C0C0"
+    },
+    {
+      "name": "classic_light",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "classic_shadow",
+      "value": "#808080"
+    },
+    {
+      "name": "classic_dark",
+      "value": "#000000"
+    },
+    {
+      "name": "classic_text",
+      "value": "#000000"
+    },
+    {
+      "name": "led_bg",
+      "value": "#000000"
+    },
+    {
+      "name": "led_on",
+      "value": "#FF0000"
+    },
+    {
+      "name": "led_off",
+      "value": "#3D0000"
+    },
+    {
+      "name": "num_0",
+      "value": "#808080"
+    },
+    {
+      "name": "num_1",
+      "value": "#0000FF"
+    },
+    {
+      "name": "num_2",
+      "value": "#008000"
+    },
+    {
+      "name": "num_3",
+      "value": "#FF0000"
+    },
+    {
+      "name": "num_4",
+      "value": "#000080"
+    },
+    {
+      "name": "num_5",
+      "value": "#800000"
+    },
+    {
+      "name": "num_6",
+      "value": "#008080"
+    },
+    {
+      "name": "num_7",
+      "value": "#000000"
+    },
+    {
+      "name": "num_8",
+      "value": "#808080"
+    },
+    {
+      "name": "flag_red",
+      "value": "#FF0000"
+    },
+    {
+      "name": "mine_black",
+      "value": "#000000"
+    },
+    {
+      "name": "exploded_bg",
+      "value": "#FF0000"
+    },
+    {
+      "name": "flag_wrong_text",
+      "value": "#FF0000"
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+[2026-10-08T22:02:14.093] [DEBUG] debug-file - env: nodejsVersion=v24.14.1
+[2026-10-08T22:02:14.365] [DEBUG] debug-file - Hvigor init with startParameters:{
+  hvigorfileTypeCheck: false,
+  parallelExecution: true,
+  incrementalExecution: true,
+  printStackTrace: false,
+  daemon: false,
+  analyze: 0,
+  logLevel: Level { level: 20000, levelStr: 'INFO', colour: 'green' },
+  optimizationStrategy: 'memory',
+  hotCompile: undefined,
+  hotReloadBuild: undefined,
+  customizedParam: undefined
+}
+[2026-10-08T22:02:15.464] [DEBUG] debug-file - hvigorfile, require result:  { default: { system: [Function: appTasks], plugins: [] } }
+[2026-10-08T22:02:15.662] [DEBUG] debug-file - App plugin register hook start...
+[2026-10-08T22:02:15.671] [DEBUG] debug-file - Obtain build option for product 'default'in this build.
+[2026-10-08T22:02:15.468] [DEBUG] debug-file - Starting plugin build process
+[2026-10-08T22:02:15.693] [DEBUG] debug-file - Start recording SDK configuration permission data.
+[2026-10-08T22:02:15.771] [DEBUG] debug-file - Project task initialization takes 2 ms 
+[2026-10-08T22:02:15.777] [DEBUG] debug-file - failed to load cangjie to dynamically generate schemas: Error: Cannot find module '@ohos/cangjie-build-support/index'
+Require stack:
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor-ohos-plugin/src/plugin/hooks/cangjie-register.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor-ohos-plugin/src/plugin/strategy/stage-init-strategy.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor-ohos-plugin/src/plugin/builder/abstract-plugin-builder.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor-ohos-plugin/src/plugin/builder/app-plugin-builder.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor-ohos-plugin/src/plugin/factory/plugin-factory.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor-ohos-plugin/index.js
+- /Users/raychen/Develop/ComplexSweeper-HarmonyOS/hvigorfile.ts
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor/src/base/internal/lifecycle/configuration.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor/src/base/boot/index.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor/src/cli/main/cli.js
+- /Users/raychen/Applications/DevEco-Studio.app/Contents/tools/hvigor/hvigor/bin/hvigor.js
+[2026-10-08T22:02:15.785] [DEBUG] debug-file - Start initialize module-target build option map, moduleName=entry, buildMode=debug
+[2026-10-08T22:02:15.820] [DEBUG] debug-file - project has submodules:entry
+[2026-10-08T22:02:15.821] [DEBUG] debug-file - start to load updatedOhPackageInfo to the disk
+[2026-10-08T22:02:15.834] [DEBUG] debug-file - Start to initialize dependency information.
+[2026-10-08T22:02:15.857] [DEBUG] debug-file - entry : clean cost memory 0.9353866577148438
+[2026-10-08T22:02:14.094] [DEBUG] debug-file - env: hvigor-config.json5 content = {
+  modelVersion: '26.0.0',
+  dependencies: {},
+  execution: {},
+  logging: {},
+  debugging: {},
+  nodeOptions: {}
+}
+[2026-10-08T22:02:14.365] [DEBUG] debug-file - Since current hvigor version 6.26.4 differs from last hvigor version 
+      undefined, delete file-cache.json and task-cache.json.
+[2026-10-08T22:02:15.869] [DEBUG] debug-file - Create  resident worker with id: 0.
+[2026-10-08T22:02:15.465] [DEBUG] debug-file - hvigorfile, binding system plugins [Function: appTasks]
+[2026-10-08T22:02:15.663] [DEBUG] debug-file - App plugin register hook end...
+[2026-10-08T22:02:15.681] [DEBUG] debug-file - /Users/raychen/Develop/ComplexSweeper-HarmonyOS/build/cache/default/remote_hsp/remoteHspCache.json not exists.
+[2026-10-08T22:02:15.468] [DEBUG] debug-file - App plugin prepare start...
+[2026-10-08T22:02:15.769] [DEBUG] debug-file - Sdk init in 88 ms 
+[2026-10-08T22:02:15.772] [DEBUG] debug-file - hvigorfile, begin to bind custom plugins...
+[2026-10-08T22:02:15.785] [DEBUG] debug-file - Target 'default' config initialized
+[2026-10-08T22:02:15.826] [DEBUG] debug-file - load to the disk finished
+[2026-10-08T22:02:15.835] [DEBUG] debug-file - Module entry Collected Dependency: 
+[2026-10-08T22:02:15.857] [DEBUG] debug-file - runTaskFromQueue task cost before running: 1 s 499 ms 
+[2026-10-08T22:02:14.095] [DEBUG] debug-file - env: daemon=false
+[2026-10-08T22:02:14.366] [DEBUG] debug-file - Cache service initialization finished in 1 ms 
+[2026-10-08T22:02:15.870] [DEBUG] debug-file - Create  resident worker with id: 1.
+[2026-10-08T22:02:15.663] [DEBUG] debug-file - Plugin build process completed
+[2026-10-08T22:02:15.681] [DEBUG] debug-file - Local scan or download HarmonyOS sdk components toolchains,ets,js,native,previewer
+[2026-10-08T22:02:15.468] [DEBUG] debug-file - App plugin prepare end...
+[2026-10-08T22:02:15.772] [DEBUG] debug-file - hvigorfile, no custom plugins were found in /Users/raychen/Develop/ComplexSweeper-HarmonyOS/hvigorfile.ts
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Target 'ohosTest' config initialized
+[2026-10-08T22:02:15.828] [DEBUG] debug-file - Start to initialize dependency information.
+[2026-10-08T22:02:15.835] [DEBUG] debug-file - Module entry's total dependency: 0
+[2026-10-08T22:02:15.858] [INFO] debug-file - Finished :entry:clean... after 20 ms 
+[2026-10-08T22:02:14.095] [DEBUG] debug-file - no-daemon, use the parent process.execArgv --max-old-space-size=8192,--max-semi-space-size=16,--expose-gc
+[2026-10-08T22:02:14.366] [DEBUG] debug-file - hvigorfile, resolving /Users/raychen/Develop/ComplexSweeper-HarmonyOS/hvigorfile.ts
+[2026-10-08T22:02:15.871] [DEBUG] debug-file - Current worker pool is stopped or closed.
+[2026-10-08T22:02:15.664] [DEBUG] debug-file - Start initialize project's product build option map with build mode debug.
+[2026-10-08T22:02:15.688] [DEBUG] debug-file - Local scan or download hmscore sdk components toolchains,ets,native
+[2026-10-08T22:02:15.468] [DEBUG] debug-file - App plugin creating...
+[2026-10-08T22:02:15.772] [DEBUG] debug-file - hvigorfile, resolve finished /Users/raychen/Develop/ComplexSweeper-HarmonyOS/hvigorfile.ts
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Module 'entry' target 'default' build option initialized
+[2026-10-08T22:02:15.834] [DEBUG] debug-file - Module ComplexSweeper-HarmonyOS Collected Dependency: 
+[2026-10-08T22:02:15.836] [DEBUG] debug-file - Configuration phase cost:1 s 471 ms 
+[2026-10-08T22:02:15.859] [DEBUG] debug-file - Executing task ::clean
+[2026-10-08T22:02:15.871] [DEBUG] debug-file - Clear worker 0.
+[2026-10-08T22:02:15.664] [DEBUG] debug-file - Picking option from product 'default' with build mode 'debug'.
+[2026-10-08T22:02:15.772] [DEBUG] debug-file - hvigorfile, resolving /Users/raychen/Develop/ComplexSweeper-HarmonyOS/entry/hvigorfile.ts
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Module 'entry' target 'ohosTest' build option initialized
+[2026-10-08T22:02:15.834] [DEBUG] debug-file - Module ComplexSweeper-HarmonyOS's total dependency: 0
+[2026-10-08T22:02:15.837] [DEBUG] debug-file - Configuration task cost before running: 1 s 479 ms 
+[2026-10-08T22:02:15.859] [DEBUG] debug-file - clean: Worker pool is inactive.
+[2026-10-08T22:02:15.871] [DEBUG] debug-file - Clear worker 1.
+[2026-10-08T22:02:15.665] [DEBUG] debug-file - Product 'default' build option initialized
+[2026-10-08T22:02:15.776] [DEBUG] debug-file - hvigorfile, require result:  { default: { system: [Function: hapTasks], plugins: [] } }
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - End initialize module-target build option map, moduleName=entry
+[2026-10-08T22:02:15.837] [DEBUG] debug-file - Executing task :entry:clean
+[2026-10-08T22:02:15.859] [DEBUG] debug-file - ComplexSweeper-HarmonyOS : clean cost memory 0.024139404296875
+[2026-10-08T22:02:15.871] [DEBUG] debug-file - hvigor build process will be closed.
+[2026-10-08T22:02:15.665] [DEBUG] debug-file - End initialize project's product build option map with build mode 'debug'.
+[2026-10-08T22:02:15.776] [DEBUG] debug-file - hvigorfile, binding system plugins [Function: hapTasks]
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Start initialize module-target build option map, moduleName=entry, buildMode=release
+[2026-10-08T22:02:15.837] [DEBUG] debug-file - clean: Worker pool is inactive.
+[2026-10-08T22:02:15.859] [DEBUG] debug-file - runTaskFromQueue task cost before running: 1 s 501 ms 
+[2026-10-08T22:02:15.881] [DEBUG] debug-file - worker[1] exits with exit code 0.
+[2026-10-08T22:02:15.776] [DEBUG] debug-file - Starting plugin build process
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Target 'default' config initialized
+[2026-10-08T22:02:15.860] [INFO] debug-file - Finished ::clean... after 1 ms 
+[2026-10-08T22:02:15.881] [DEBUG] debug-file - worker[0] exits with exit code 0.
+[2026-10-08T22:02:15.776] [DEBUG] debug-file - Hap plugin creating...
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Target 'ohosTest' config initialized
+[2026-10-08T22:02:15.860] [DEBUG] debug-file - Executing task :entry:init
+[2026-10-08T22:02:15.882] [DEBUG] debug-file - Worker 1 has been cleared.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Module 'entry' target 'default' build option initialized
+[2026-10-08T22:02:15.860] [DEBUG] debug-file - entry : init cost memory 0.01930999755859375
+[2026-10-08T22:02:15.882] [DEBUG] debug-file - Current idle worker size: 0.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Module 'entry' target 'ohosTest' build option initialized
+[2026-10-08T22:02:15.860] [DEBUG] debug-file - runTaskFromQueue task cost before running: 1 s 502 ms 
+[2026-10-08T22:02:15.882] [DEBUG] debug-file - Current busy worker size: 0.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - End initialize module-target build option map, moduleName=entry
+[2026-10-08T22:02:15.860] [INFO] debug-file - Finished :entry:init... after 1 ms 
+[2026-10-08T22:02:15.882] [DEBUG] debug-file - Worker 0 has been cleared.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Start initialize module-target build option map, moduleName=entry, buildMode=debug
+[2026-10-08T22:02:15.860] [DEBUG] debug-file - Executing task ::init
+[2026-10-08T22:02:15.882] [DEBUG] debug-file - Current idle worker size: 0.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Target 'default' config initialized
+[2026-10-08T22:02:15.860] [DEBUG] debug-file - ComplexSweeper-HarmonyOS : init cost memory 0.01601409912109375
+[2026-10-08T22:02:15.882] [DEBUG] debug-file - Current busy worker size: 0.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Target 'ohosTest' config initialized
+[2026-10-08T22:02:15.860] [DEBUG] debug-file - runTaskFromQueue task cost before running: 1 s 502 ms 
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Module 'entry' target 'default' build option initialized
+[2026-10-08T22:02:15.860] [INFO] debug-file - Finished ::init... after 1 ms 
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Module 'entry' target 'ohosTest' build option initialized
+[2026-10-08T22:02:15.862] [DEBUG] debug-file - Obtain build option for module 'entry' target 'default'in this build.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - End initialize module-target build option map, moduleName=entry
+[2026-10-08T22:02:15.862] [DEBUG] debug-file - Obtain build option for module 'entry' target 'ohosTest'in this build.
+[2026-10-08T22:02:15.786] [DEBUG] debug-file - Obtain build option for module 'entry' target 'default'in this build.
+[2026-10-08T22:02:15.869] [DEBUG] debug-file - Since there is no instance or instance is terminated, create a new worker pool.
+[2026-10-08T22:02:15.819] [DEBUG] debug-file - Module entry task initialization takes 32 ms 
+[2026-10-08T22:02:15.869] [DEBUG] debug-file - Worker pool is initialized with config:  {
+  minPoolNum: 2,
+  maxPoolNum: undefined,
+  maxCoreSize: undefined,
+  cacheCapacity: undefined,
+  cacheTtl: undefined
+}
+[2026-10-08T22:02:15.819] [DEBUG] debug-file - Hap plugin register hook start...
+[2026-10-08T22:02:15.819] [DEBUG] debug-file - Hap plugin register hook end...
+[2026-10-08T22:02:15.819] [DEBUG] debug-file - Plugin build process completed
+[2026-10-08T22:02:15.819] [DEBUG] debug-file - hvigorfile, begin to bind custom plugins...
+[2026-10-08T22:02:15.819] [DEBUG] debug-file - hvigorfile, no custom plugins were found in /Users/raychen/Develop/ComplexSweeper-HarmonyOS/entry/hvigorfile.ts
+[2026-10-08T22:02:15.819] [DEBUG] debug-file - hvigorfile, resolve finished /Users/raychen/Develop/ComplexSweeper-HarmonyOS/entry/hvigorfile.ts
+[2026-10-08T22:02:15.912] [DEBUG] debug-file - Current worker pool is terminated.
+[2026-10-08T22:02:15.912] [DEBUG] debug-file - Current worker pool is terminated.

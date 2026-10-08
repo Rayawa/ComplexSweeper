@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "复数扫雷主模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "复数扫雷"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "复数扫雷"
+    },
+    {
+      "name": "vibrate_reason",
+      "value": "翻开格子与标记地雷时给出触感反馈"
+    }
+  ]
+}

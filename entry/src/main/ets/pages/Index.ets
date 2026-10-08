@@ -51,6 +51,18 @@ const HDS_MATERIAL_TYPE_ADAPTIVE: number = 100;
 const HDS_MATERIAL_LEVEL_GENTLE: number = 1;
 
 /**
+ * 底栏标签的样式。本应用不做深色适配，底栏恒为银灰：
+ * 未选中钉死黑色 —— 不钉的话 HDS 会按深色材质把它反白，白字压在银灰上看不清；
+ * 选中保留系统强调色，全黑就没有选中态了。
+ */
+function tabBarStyle(icon: Resource, text: string): BottomTabBarStyle {
+  return new BottomTabBarStyle(icon, text).labelStyle({
+    selectedColor: $r('sys.color.brand'),
+    unselectedColor: $r('app.color.classic_dark')
+  });
+}
+
+/**
  * 首帧先用屏幕宽度估一个棋盘可用宽度。
  *
  * 真实值是 onAreaChange 测出来的，但那要等第一次布局之后 —— 在那之前
@@ -575,23 +587,55 @@ struct Index {
     TutorialContent()
   }
 
+  /**
+   * 「关于」弹层的标题栏。系统那套 title 只收文字、给不了颜色，标题和关闭按钮
+   * 都是系统灰 —— 所以整条自己画：标题纯黑，关掉 showClose 用这里画的叉。
+   */
+  @Builder
+  SheetTitleBar() {
+    Row() {
+      Column({ space: 2 }) {
+        Text('关于')
+          .fontSize(17)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.classic_dark'))
+        Text('复扫雷 · ComplexSweeper')
+          .fontSize(12)
+          .fontColor($r('app.color.classic_shadow'))
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      SymbolGlyph($r('sys.symbol.xmark'))
+        .fontSize(20)
+        .fontColor([$r('app.color.classic_dark')])
+        .padding(8)
+        .accessibilityText('关闭')
+        .onClick(() => {
+          this.showTutorial = false;
+        })
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, top: 10, bottom: 6 })
+  }
+
   build() {
     HdsNavigation() {
       HdsTabs({ controller: this.tabsController, index: this.selectedTab }) {
         TabContent() {
           this.GamePage()
         }
-        .tabBar(new BottomTabBarStyle($r('app.media.cw_tab_1'), '初级'))
+        .tabBar(tabBarStyle($r('app.media.cw_tab_1'), '初级'))
 
         TabContent() {
           this.GamePage()
         }
-        .tabBar(new BottomTabBarStyle($r('app.media.cw_tab_2'), '中级'))
+        .tabBar(tabBarStyle($r('app.media.cw_tab_2'), '中级'))
 
         TabContent() {
           this.GamePage()
         }
-        .tabBar(new BottomTabBarStyle($r('app.media.cw_tab_3'), '高级'))
+        .tabBar(tabBarStyle($r('app.media.cw_tab_3'), '高级'))
       }
       .barPosition(BarPosition.End)
       .scrollable(false)
@@ -617,17 +661,19 @@ struct Index {
     .hideBackButton(true)
     // 沉浸的关键：整个导航忽略系统安全区，铺满整屏。
     // 标题栏和悬浮底栏会各自避让状态栏与手势条，页面内容则靠上下留白让位。
+    // 几条走不通的路：setWindowBackgroundColor 对手机 / 平板 / 2in1 不可用；
+    // 给内容层直接加 expandSafeArea 会把内容一起顶上去，压到状态栏底下。
     .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP, LayoutSafeAreaEdge.BOTTOM])
     .titleBar({
       content: {
-        title: { mainTitle: '复数扫雷' },
-        // 教程常驻标题栏，三个难度页都能点开。tab 只留给难度。
+        title: { mainTitle: '复扫雷' },
+        // 关于常驻标题栏，三个难度页都能点开。tab 只留给难度。
         menu: {
           value: [
             {
               content: {
-                label: '教程',
-                icon: $r('sys.symbol.questionmark_circle'),
+                label: '关于',
+                icon: $r('sys.symbol.info_circle'),
                 isEnabled: true,
                 action: () => {
                   this.showTutorial = true;
@@ -646,23 +692,27 @@ struct Index {
         },
         // 透明底 + 系统浮动材质才是沉浸式标题栏：它让内容从底下透上来，
         // 刷成不透明色就变成一条实心色带，反而把表头压住了。
+        // 标题字常态纯黑（不走 sys.color.font_primary）—— 系统那支偏灰，
+        // 压在银色面板上不够实，本应用又只有浅色一套配色，不需要它跟着变。
         originalStyle: {
           backgroundStyle: { backgroundColor: Color.Transparent },
           contentStyle: {
-            titleStyle: { mainTitleColor: $r('sys.color.font_primary') },
+            titleStyle: { mainTitleColor: $r('app.color.classic_dark') },
             menuStyle: {
               backgroundColor: $r('sys.color.comp_background_tertiary'),
-              iconColor: $r('sys.color.icon_primary')
+              iconColor: $r('app.color.classic_dark'),
+              textColor: $r('app.color.classic_dark')
             }
           }
         },
         scrollEffectStyle: {
           backgroundStyle: { backgroundColor: Color.Transparent },
           contentStyle: {
-            titleStyle: { mainTitleColor: $r('sys.color.font_primary') },
+            titleStyle: { mainTitleColor: $r('app.color.classic_dark') },
             menuStyle: {
               backgroundColor: $r('sys.color.comp_background_tertiary'),
-              iconColor: $r('sys.color.icon_primary')
+              iconColor: $r('app.color.classic_dark'),
+              textColor: $r('app.color.classic_dark')
             }
           }
         },
@@ -673,15 +723,16 @@ struct Index {
       }
     })
     .bindSheet($$this.showTutorial, this.TutorialSheet(), {
-      title: { title: '教程', subtitle: '复扫雷 · ComplexSweeper' },
-      // 初始全屏，但可以往下拖到中等高度 —— 只给一个档位就没法拖了
+      // 标题栏自己画（SheetTitleBar），系统的关闭按钮也换成自己那个黑的
+      title: () => { this.SheetTitleBar() },
+      showClose: false,
+      // 打开就是全屏，且不给 detents —— 没有档位可拖，高度不会缩回去
       height: SheetSize.LARGE,
-      detents: [SheetSize.MEDIUM, SheetSize.LARGE],
       preferType: SheetType.BOTTOM,
-      showClose: true,
       dragBar: true,
-      // 圆角与顶部的间隔交给系统，别再自己加
-      blurStyle: BlurStyle.COMPONENT_ULTRA_THICK,
+      // 弹层整体（含顶部标题区）刷成面板银灰，与页内同色 —— 用不透明背景色而不是
+      // 毛玻璃：毛玻璃会把底下的页面和遮罩透上来，顶部就变成另一种灰，对不上。
+      backgroundColor: $r('app.color.classic_face'),
       scrollSizeMode: ScrollSizeMode.CONTINUOUS
     })
   }

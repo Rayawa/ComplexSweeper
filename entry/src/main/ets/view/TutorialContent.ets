@@ -1,13 +1,20 @@
-import { ACHIEVABLE, formatModulus, TYPE_LABELS } from '../model/Complex';
-import { flagSprite, numSprite } from '../view/Sprites';
+import { TYPE_LABELS } from '../model/Complex';
+import { flagSprite } from '../view/Sprites';
+import { feedbackTick } from '../view/Feedback';
 
 /** ForEach 要遍历的四种雷下标 */
 const TYPE_INDEXES: number[] = [0, 1, 2, 3];
 
+/** 「关于」底部展示的版本号，与应用配置 app.json5 的 versionName 保持一致 */
+const APP_VERSION: string = '1.0.1';
+
 /**
- * 教程内容，装在标题栏那个 bindSheet 里。
+ * 「关于」弹层的内容，装在标题栏那个 bindSheet 里。
  *
- * 三段式：顶部图标配中英文名，中间正文，末尾移植者信息。
+ * 上半是基础规则：数字怎么来的、四种雷、空白和 0 的区别、怎么操作 ——
+ * 展开的判定细节和 24 个可达值都没有展开写，上手之后自然碰到，
+ * 这里再列一遍只会把基础规则淹掉。下半是版本、开发者与版权。
+ *
  * 这里**不加任何顶部留白** —— 弹层自己有标题栏和拖拽条，内容从它下面开始就好；
  * 底部也不留悬浮底栏那个空档，弹层里没有底栏。
  */
@@ -94,41 +101,6 @@ export struct TutorialContent {
     .padding({ top: 6, bottom: 2 })
   }
 
-  /** 24 个可能出现的数字，用真实贴图列出来 */
-  @Builder
-  ValueGrid() {
-    Flex({ wrap: FlexWrap.Wrap }) {
-      ForEach(ACHIEVABLE, (v: number) => {
-        Column() {
-          Image(numSprite(v))
-            .width(28)
-            .height(28)
-            .interpolation(ImageInterpolation.None)
-        }
-        .width(46)
-        .padding({ top: 5, bottom: 5 })
-      }, (v: number) => `val-${v}`)
-    }
-    .width('100%')
-  }
-
-  /** 末尾的一组信息行 */
-  @Builder
-  InfoRow(label: string, value: string) {
-    Row() {
-      Text(label)
-        .fontSize(13)
-        .fontColor($r('app.color.classic_shadow'))
-        .width(72)
-      Text(value)
-        .fontSize(13)
-        .fontColor($r('app.color.classic_dark'))
-        .layoutWeight(1)
-    }
-    .width('100%')
-    .padding({ bottom: 5 })
-  }
-
   // ---------------- 组装 ----------------
 
   build() {
@@ -146,33 +118,55 @@ export struct TutorialContent {
 
         this.SectionTitle('空白和 0 不是一回事')
         this.Body('空白格：周围一颗雷都没有。')
-        this.Body('显示 0：周围有雷，但两两抵消了。')
-        this.Body('只有空白格会自动向外连片展开。所以点开一个显示 0 的格子却没有展开，'
-          + '就说明它周围有雷。')
-
-        this.SectionTitle('数字格可以展开')
-        this.Body('点一个已经翻开的数字格，如果它周围的旗子数量正好等于真实雷数、'
-          + '实虚比例也对得上（或正好反过来），就会一次掀开周围没插旗的格子。'
-          + '掀开是安全的，说明判断成立；不合法什么都不会发生；掀到雷就输了。')
+        this.Body('显示 0：周围有雷，但正负两两抵消了。')
 
         this.SectionTitle('操作')
         this.Body('单击未翻开的格子：循环标记 空 → +1 → −1 → +i → −i → 空。')
-        this.Body('单击已翻开的数字格：展开。')
         this.Body('长按未翻开的格子：翻开。插了旗的格子翻不开，得先把旗循环回空。')
+        this.Body('单击已翻开的数字格：周围旗子插对时，一次掀开周围没插旗的格子。')
 
-        this.SectionTitle('只会出现这 24 个数')
-        this.ValueGrid()
+        // 页脚：一条分割线，然后是版本、开发者与版权
+        Divider()
+          .color($r('app.color.classic_shadow'))
+          .margin({ top: 20, bottom: 12 })
 
-        this.SectionTitle('移自')
-        this.InfoRow('移植维护', 'Rayawa')
-        this.InfoRow('原作', '青月晓 · 复扫雷（Zig + Win32）')
-        this.InfoRow('规则与素材', '均来自上游项目')
-        this.Body('经典扫雷原始图像素材版权属于 Microsoft，不在本项目 GPL-3.0 授权范围内，'
-          + '仅作个人学习与兼容性展示之用。其余素材与代码遵循 GPL-3.0。')
+        Text(`版本 ${APP_VERSION}`)
+          .fontSize(12)
+          .fontColor($r('app.color.classic_shadow'))
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .padding({ bottom: 6 })
+          .onClick(() => {
+            feedbackTick();
+          })
+          .accessibilityText(`版本${APP_VERSION}`)
+
+        Text('原作 青月晓 · Complexweeper')
+          .fontSize(12)
+          .fontColor($r('app.color.classic_shadow'))
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .padding({ bottom: 6 })
+          .accessibilityText('原作 青月晓 Complexweeper')
+
+        Text('HarmonyOS 移植 Ray Chen (Rayawa)')
+          .fontSize(12)
+          .fontColor($r('app.color.classic_shadow'))
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .padding({ bottom: 6 })
+          .accessibilityText('HarmonyOS 移植 Ray Chen Rayawa')
+
+        Text('Copyright © 2026 Ray Chen (Rayawa)')
+          .fontSize(12)
+          .fontColor($r('app.color.classic_shadow'))
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .accessibilityText('版权所有 2026 Ray Chen Rayawa')
       }
       .width('100%')
       .alignItems(HorizontalAlign.Start)
-      .padding({ left: 14, right: 14, bottom: 24 })
+      .padding({ left: 14, right: 14, bottom: 48 })
     }
     .scrollBar(BarState.Auto)
     .width('100%')

@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "ComplexSweeper entry module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "ComplexSweeper"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "ComplexSweeper"
+    },
+    {
+      "name": "vibrate_reason",
+      "value": "Haptic feedback when a cell is revealed or a mine is flagged"
+    }
+  ]
+}

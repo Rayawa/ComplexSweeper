@@ -77,14 +77,21 @@ and re-run the slicing script.*
 | `led_0`…`led_9` / `led_minus` / `led_blank` / `led_i` | 计雷器与计时器的 LED 数字、负号、空格子与 i 单位 / LED digits, minus sign, blank slot, and the i unit |
 | `icon` | 程序图标，32×32，带 alpha / app icon, 32×32 with alpha |
 
-应用图标由 `scripts/atlas/make-icon.ts` 从 `icon` 槽位放大生成
-`AppScope/resources/base/media/foreground.png`（1024×1024，图案 512×512 居中）
-与同尺寸的纯色背景层。
+应用图标由 `scripts/atlas/make-icon.ts` 从 `icon` 槽位放大生成分层图标的两个图层
+（1024×1024，前景图案 512×512 居中 + 同尺寸的纯色背景层），AppScope 与 entry 的
+media 目录各写一份：前者是应用图标，后者是 ability 图标，桌面 Launcher 显示的是后者。
+启动窗口图标 `startIcon.png`（512×512，透明底）也放大自同一个槽位。
 
-同一个脚本还会把 `flag_1`…`flag_3` 放大成 96×96 的标签页图标
-`cw_tab_1.png`…`cw_tab_3.png`（系统会把 16×16 的贴图拉大显示，那样会糊，所以先自己整数倍放大）。
+标签页图标 `cw_tab_1.png`…`cw_tab_3.png` 也出自 `icon` 槽位：三档难度是同一个图案的
+2×/3×/4× 三档大小，画在同样 128×128 的透明画布上 —— 画布必须一样大，系统把每张图
+各自缩放到同一个显示尺寸后，才保得住「初级小、高级大」的递进。
 
-*The app icon is generated from the `icon` slot by `scripts/atlas/make-icon.ts`.*
+*The app icon is generated from the `icon` slot by `scripts/atlas/make-icon.ts`:
+layered icon layers (1024×1024) into both `AppScope/` (app icon) and the module's media
+directory (ability icon — what the launcher shows), plus a transparent-background
+`startIcon.png` (512×512) for the startup window. The tab icons `cw_tab_1..3` come from
+the same slot — one motif at 2×/3×/4× on identically-sized 128×128 canvases, so the
+difficulty progression survives the system scaling every icon to one display size.*
 
 ---
 

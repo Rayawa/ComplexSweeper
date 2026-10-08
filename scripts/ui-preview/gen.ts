@@ -26,6 +26,9 @@ const LED_W = 13;
 const ICON = 18;
 const FACE = 46;
 
+/** 底栏标签：三档难度 + 关于（真实界面里「关于」在标题栏，预览图省事画进底栏） */
+const TAB_NAMES: string[] = ['初级', '中级', '高级', '关于'];
+
 function dataUri(name: string): string {
   const b = fs.readFileSync(path.join(MEDIA, `${name}.png`));
   return `data:image/png;base64,${b.toString('base64')}`;
@@ -215,7 +218,7 @@ function screen(opts: any): string {
        display:flex;flex-direction:column;padding:8px 8px 4px}
   .titlebar{height:52px;display:flex;align-items:center;padding:0 16px;
             background:#F1F3F5;border-bottom:1px solid #D8DCE1;margin:-8px -8px 8px}
-  .titlebar b{font-size:17px;color:#1B1F27}
+  .titlebar b{font-size:17px;color:#000}
   .header{display:flex;align-items:center;padding:6px;background:#C0C0C0;
           border-top:3px solid #808080;border-left:3px solid #808080;
           border-bottom:3px solid #FFFFFF;border-right:3px solid #FFFFFF}
@@ -236,9 +239,10 @@ function screen(opts: any): string {
   .status{font-size:12px;color:#000;text-align:center;padding:6px 0 2px}
   .toolbar{margin-top:8px;height:52px;display:flex;align-items:center;justify-content:space-around;
            background:#F1F3F5;border-top:1px solid #D8DCE1;margin-left:-8px;margin-right:-8px}
-  .toolbar span{font-size:12px;color:#5A6472}
+  .toolbar span{font-size:12px;color:#000}
+  .toolbar span.on{color:#0A59F7}
   </style></head><body>
-  <div class="titlebar"><b>复数扫雷</b></div>
+  <div class="titlebar"><b>复扫雷</b></div>
   <div class="header">
     <div class="counters">${counters}</div>
     <div class="spacer"></div>
@@ -250,7 +254,8 @@ function screen(opts: any): string {
   </div>
   <div class="boardwrap"><div class="grid">${cells}</div></div>
   <div class="status">${status}</div>
-  <div class="toolbar"><span>初级</span><span>中级</span><span>高级</span><span>教程</span></div>
+  <div class="toolbar">${TAB_NAMES.map((n, i) =>
+      `<span${i === opts.diffIndex ? ' class="on"' : ''}>${n}</span>`).join('')}</div>
   </body></html>`;
 }
 

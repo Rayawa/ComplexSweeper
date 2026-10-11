@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      经典扫雷只有银灰一套配色，不做深色适配，也不用系统取色。
+      windowBackground 直接刷成面板银灰，冷启动不会先闪一下白。
+    -->
+    <style name="Theme.ComplexSweeperAndroid" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/classic_face</item>
+        <item name="android:colorBackground">@color/classic_face</item>
+    </style>
+</resources>

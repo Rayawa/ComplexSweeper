@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 窗口底色刷成经典扫雷的银灰：冷启动那一瞬间不会先闪一下白 -->
+    <color name="classic_face">#FFC0C0C0</color>
+    <color name="classic_light">#FFFFFFFF</color>
+    <color name="classic_shadow">#FF808080</color>
+    <color name="classic_dark">#FF000000</color>
+    <color name="led_bg">#FF000000</color>
+</resources>

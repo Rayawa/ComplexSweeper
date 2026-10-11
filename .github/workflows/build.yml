@@ -1,64 +1,81 @@
-name: build
+name: Native ports
 
-# push / PR 都构建一遍，附件里给出 exe 与两份自检报告
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  windows:
-    runs-on: windows-latest
+  harmony-engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: HarmonyOS
     steps:
       - uses: actions/checkout@v5
-
-      # 0) .ps1 必须带 UTF-8 BOM —— PowerShell 5.1 读无 BOM 文件会按 ANSI 解析，中文全乱码。
-      #    编辑工具保存时会把 BOM 去掉，所以每次构建前先查一遍。
-      - name: 检查 .ps1 的 UTF-8 BOM
-        shell: pwsh
-        run: |
-          $bad = @()
-          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
-            $b = [System.IO.File]::ReadAllBytes($_.FullName)
-            if ($b.Length -lt 3 -or $b[0] -ne 0xEF -or $b[1] -ne 0xBB -or $b[2] -ne 0xBF) {
-              $bad += $_.FullName.Substring((Get-Location).Path.Length + 1)
-            }
-          }
-          if ($bad.Count) { throw ('这些脚本缺 UTF-8 BOM：' + ($bad -join ' / ')) }
-          Write-Host '所有 .ps1 都带着 UTF-8 BOM'
-
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
+      - name: Check HarmonyOS engine
+        run: ./scripts/engine-check/run.sh
 
-      - name: 装 Zig 0.14.1
-        shell: pwsh
-        run: |
-          $ProgressPreference = 'SilentlyContinue'   # 关掉进度条，Invoke-WebRequest 快一个量级
-          $url = 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip'
-          $zip = Join-Path $env:RUNNER_TEMP 'zig.zip'
-          Invoke-WebRequest -Uri $url -OutFile $zip
-          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP -Force
-          $dir = Get-ChildItem $env:RUNNER_TEMP -Directory -Filter 'zig-*windows*' | Select-Object -First 1
-          if (-not $dir) { throw '解压后找不到 zig 目录' }
-          $exe = Join-Path $dir.FullName 'zig.exe'
-          if (-not (Test-Path $exe)) { throw "找不到 $exe" }
-          $dir.FullName | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
-          $got = & $exe version
-          Write-Host "zig = $got（$($dir.Name)）"
-          if ($got -ne '0.14.1') { throw "Zig 版本不对：$got，本工程按 0.14.1 写" }
-
-      - name: 构建 + 两套自检
-        shell: pwsh
-        run: ./正式版/build.ps1
-
-      - name: 上传产物与自检报告
-        uses: actions/upload-artifact@v5
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Android
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
-          name: complexweeper-${{ github.sha }}
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-37' 'build-tools;36.0.0'
+      - name: Test, lint and build
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+      - uses: actions/upload-artifact@v5
+        with:
+          name: android-debug
           path: |
-            正式版/复扫雷*.exe
-            正式版/build/selftest.txt
-            正式版/build/uitest.txt
+            Android/app/build/outputs/apk/debug/*.apk
+            Android/app/build/reports/tests/testDebugUnitTest/
+            Android/app/build/reports/lint-results-debug.html
+          if-no-files-found: error
+
+  apple:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: Apple Platform
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check Apple engine
+        run: ./Tools/engine-check/run.sh
+      - name: Build macOS
+        run: >-
+          xcodebuild build -project ComplexSweeper-Apple.xcodeproj -scheme ComplexSweeper-Apple
+          -configuration Release -destination 'platform=macOS'
+          -derivedDataPath .build/macos CODE_SIGNING_ALLOWED=NO
+      - name: Build iOS Simulator
+        run: >-
+          xcodebuild build -project ComplexSweeper-Apple.xcodeproj -scheme ComplexSweeper-Apple
+          -configuration Release -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath .build/ios-simulator CODE_SIGNING_ALLOWED=NO
+      - name: Package apps
+        run: |
+          mkdir -p .build/packages
+          ditto -c -k --sequesterRsrc --keepParent '.build/macos/Build/Products/Release/复扫雷.app' .build/packages/ComplexSweeper-macOS.zip
+          ditto -c -k --sequesterRsrc --keepParent '.build/ios-simulator/Build/Products/Release-iphonesimulator/复扫雷.app' .build/packages/ComplexSweeper-iOS-simulator.zip
+      - uses: actions/upload-artifact@v5
+        with:
+          name: apple-unsigned
+          path: Apple Platform/.build/packages/*.zip
           if-no-files-found: error

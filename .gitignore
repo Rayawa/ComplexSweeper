@@ -1,0 +1,30 @@
+# Local IDE state and operating system metadata
+.DS_Store
+**/.idea/
+**/xcuserdata/
+*.xcuserstate
+
+# Platform build/dependency output
+**/.gradle/
+**/.kotlin/
+**/.hvigor/
+**/oh_modules/
+**/node_modules/
+**/build/
+**/.build/
+**/.preview/
+**/.cxx/
+**/.test/
+
+# Local SDK and signing configuration
+**/local.properties
+**/build-profile.local.json5
+*.p12
+*.p7b
+*.cer
+*.keystore
+*.jks
+*.mobileprovision
+
+# Release packages stay in GitHub Releases
+/artifacts/

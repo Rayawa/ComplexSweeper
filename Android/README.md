@@ -1,5 +1,8 @@
 # Android 移植与工程说明
 
+**当前版本 1.1.0（versionCode 2）**。底部 Tabs 切换圆复数 / 闵可夫斯基模式，棋盘上方使用 Material 3 `SingleChoiceSegmentedButtonRow` 选择难度。
+下载与签名说明见 [v1.1.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.1.0)。
+
 本目录是复扫雷的 Kotlin / Jetpack Compose 原生工程。
 应用介绍、玩法、原作致谢与共同移植范围见[仓库总 README](../README.md)。以下命令均在 `Android/` 中执行。
 
@@ -48,6 +51,8 @@ Android/
 ## 移植架构与平台适配
 
 `model` 与 `engine` 用 Kotlin 重写原作整数复数运算、mulberry32、布雷、连片展开与胜负判定。
+圆复数存储 a²+b²，闵可夫斯基存储有符号整数 a²−b²；雷格由雷型字段单独判定，负显示值不会被误认为雷。
+双曲模式按原作默认严格判据展开，只有周围无雷的空白格自动扩散；两种模式的完整规则见总 README。
 Compose 将格子动作交给 `GameController`，首击统一经过 `Board.reveal`；界面不自行布雷。
 棋盘数组与行列数使用同一快照，防止切难度时索引不一致。
 
@@ -58,6 +63,8 @@ Compose 快照状态驱动格子和计雷器刷新，控制器销毁时释放音
 
 格子轻点与长按互斥，通过局部 `ViewConfiguration` 将长按阈值固定为 400ms。
 棋盘滚动状态放在 `key(gameId)` 中，重开时复位。贴图缓存为 BitmapPainter，关闭插值，格子边长为 16–36dp。
+模式 Tabs 提供选中语义，难度使用独立原生分段控件。模式切换保留难度，难度切换保留模式；两者都重开，重复选择当前项保留局面。
+SharedPreferences 保存六个模式 / 难度槽位，圆复数沿用原有三个存档键。
 测试通过格子、计雷器等语义标签定位控件。原作者署名用 Compose 可点击文本和 `LocalUriHandler` 打开上游 GitHub。
 
 ## 素材与图标生成
@@ -71,6 +78,7 @@ node --experimental-strip-types tools/make-icon.ts \
   assets/atlas.json assets/atlas.png app/src/main/res
 ```
 
+切图脚本导出全部 116 个上游槽位，含 j 雷 / 旗、双曲数字和 LED j 单位。
 游戏贴图放在 `drawable-nodpi`，避免系统按资源密度再次缩放；音效位于 `res/raw`。
 自适应启动图标在 `mipmap-anydpi` 声明，前景 / 背景为 `drawable` 中的 VectorDrawable。
 前景从原作像素生成矩形路径，并合并同一行相邻同色像素；108dp 图层中主体宽 36dp，对应 72dp 可见窗口的一半。
@@ -101,9 +109,12 @@ node --experimental-strip-types tools/make-icon.ts \
 ./gradlew :app:connectedDebugAndroidTest
 ```
 
-合并目录前的验证（2026-10-11）：13 项 JVM 单测通过，应用与设备测试 APK 编译通过，lint 无错误，保留已有警告。
-4 项设备交互测试覆盖首击旗子保护、长按后继续插旗、计雷器更新、Activity 重建保持局面、棋盘拖动和难度切换。
-上述四项设备测试在合并目录前尚未执行；需要连接设备或安装模拟器镜像后运行。
+2026-10-12，1.1.0 验证：15 项 JVM 单测通过（0 失败、0 错误），lint 零错误，保留非错误提示；Debug 应用与设备测试 APK 构建通过。
+引擎覆盖各 360 局两种模式、39 个双曲显示值、178,200 次展开判据检查及固定种子指纹。
+
+`TouchInteractionTest.kt` 中 5 项设备交互测试覆盖首击旗子保护、长按与轻点互斥、计雷器更新、Activity 重建、棋盘拖动，以及模式 / 难度切换和重复选择。
+当前没有连接 Android 设备，尚未执行这些设备测试；华为真机验收针对原生 HarmonyOS 工程。
+完整同步记录见 [MODE_SYNC.md](../docs/MODE_SYNC.md)。
 
 ## 三端同步与维护
 

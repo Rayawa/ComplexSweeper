@@ -15,6 +15,7 @@ final class Board {
     let w: Int
     /// 行数
     let h: Int
+    let mode: GameMode
     let requestedMines: Int
     let cells: [Cell]
     /// 各类雷的实际总数，下标 0..3 对应 kMineTypes。开局公开。
@@ -32,7 +33,8 @@ final class Board {
     /// 上一次展开判定是否失败，界面用来提示「这样展开不合法」
     private var judgeFailed: Bool = false
 
-    init(w: Int, h: Int, mines: Int, seed: Int) {
+    init(w: Int, h: Int, mines: Int, seed: Int, mode: GameMode = .complex) {
+        self.mode = mode
         self.w = w
         self.h = h
         self.requestedMines = mines
@@ -146,7 +148,7 @@ final class Board {
             }
             cell.nbrMines = mines
             // 存模长平方而不是模长：整数、可精确比较、可直接当贴图下标
-            cell.clue = a * a + b * b
+            cell.clue = mode == .hyper ? a * a - b * b : a * a + b * b
         }
     }
 
@@ -175,10 +177,11 @@ final class Board {
 
     /// 展开判据：邻域旗数等于真实雷数，且「显示值区分不出来的差别」允许存在。
     ///
-    /// 显示的是模长，整体取负看不出来，实虚交换也看不出来，
+    /// 圆复数显示的是模长，整体取负与实虚交换不可区分；双曲模式按净和分量分别比较。
+    /// 圆复数模式下，
     /// 所以只要求实虚比例等于真值比例、或者等于它的倒数。
     /// 玩家可以拿这一点去试探周围有没有抵消对。
-    private func matchComboTruth(_ idx: Int) -> Bool {
+    func matchComboTruth(_ idx: Int) -> Bool {
         var realMines = 0
         var realFlags = 0
         for j in neighborsOf(idx) {
@@ -187,6 +190,15 @@ final class Board {
         }
         if realMines != realFlags { return false }
 
+        if mode == .hyper {
+            var ta = 0, tb = 0, fa = 0, fb = 0
+            for j in neighborsOf(idx) {
+                let k = kinds[j], f = cells[j].flag
+                if k != 0 { ta += kMineTypes[k - 1].re; tb += kMineTypes[k - 1].im }
+                if f != 0 { fa += kMineTypes[f - 1].re; fb += kMineTypes[f - 1].im }
+            }
+            return abs(ta) == abs(fa) && abs(tb) == abs(fb)
+        }
         var tr = 0
         var ti = 0
         var fr = 0

@@ -21,6 +21,7 @@ swiftc -O -disable-sandbox \
   -o "$OUT/engine-check" \
   "$APP/Model/Complex.swift" \
   "$APP/Model/Difficulty.swift" \
+  "$APP/Model/Stats.swift" \
   "$APP/Engine/BoardModel.swift" \
   "$APP/Engine/Board.swift" \
   "$HERE/main.swift"

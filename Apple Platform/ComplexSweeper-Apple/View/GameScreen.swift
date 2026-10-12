@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// 游戏主页。
 ///
@@ -22,19 +25,27 @@ struct GameScreen: View {
         // macOS：难度放进窗口工具栏的分段选择器，不占棋盘地方
         mainColumn
             .frame(minWidth: 420, minHeight: 520)
+            .background(MacWindowTitle().frame(width: 0, height: 0))
             .toolbar {
+                if #available(macOS 26.0, *) {
+                    ToolbarItem(placement: .principal) { AppTitle() }
+                        .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .principal) { AppTitle() }
+                }
                 ToolbarItem { MacToolbar(game: game) }
                 ToolbarItem(placement: .primaryAction) {
                     AboutButton { showTutorial = true }
                 }
             }
         #else
-        // iOS / iPadOS：难度是底部标签栏，和 HarmonyOS 版一致
+        // iOS / iPadOS：底部切模式，棋盘上方分段选择难度
         NavigationStack {
             mainColumn
                 .navigationTitle("复扫雷")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .principal) { AppTitle() }
                     ToolbarItem(placement: .topBarTrailing) {
                         AboutButton { showTutorial = true }
                     }
@@ -46,12 +57,13 @@ struct GameScreen: View {
     private var mainColumn: some View {
         GeometryReader { geo in
             VStack(spacing: 0) {
-                HeaderPanel(game: game, pageHeight: geo.size.height)
-                BoardPanel(game: game)
-                StatusLine(game: game)
                 #if os(iOS)
                 DifficultyBar(game: game)
                 #endif
+                HeaderPanel(game: game, pageHeight: geo.size.height)
+                BoardPanel(game: game)
+                StatusLine(game: game)
+                ModeBar(game: game)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Classic.face)
@@ -62,31 +74,41 @@ struct GameScreen: View {
 /// 三档难度标签。切换难度只有真的换了难度才重开，来回切不会把手上的局作废。
 struct DifficultyBar: View {
     let game: GameController
-
     var body: some View {
-        HStack(spacing: 0) {
+        Picker("难度", selection: Binding(
+            get: { game.difficultyIndex }, set: { game.selectDifficulty($0) }
+        )) {
             ForEach(kDifficulties.indices, id: \.self) { i in
-                Button {
-                    game.selectDifficulty(i)
-                } label: {
-                    VStack(spacing: 2) {
-                        PixelImage(name: Sprites.tab(i), width: 24, height: 24)
-                        Text(kDifficulties[i].label)
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-                    .foregroundStyle(game.difficultyIndex == i ? Color.accentColor : Classic.dark)
-                }
-                .buttonStyle(.plain)
+                Text(kDifficulties[i].label).tag(i)
             }
         }
-        .padding(.vertical, 4)
-        .padding(.bottom, 2)
-        .background(Classic.face)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Classic.shadow).frame(height: 1)
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .accessibilityIdentifier("difficulty")
+    }
+}
+
+struct ModeBar: View {
+    let game: GameController
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(GameMode.allCases, id: \.rawValue) { mode in
+                Button { game.selectMode(mode) } label: {
+                    VStack(spacing: 2) {
+                        PixelImage(name: Sprites.flag(3, mode: mode), width: 24, height: 24)
+                        Text(mode.label).font(.system(size: 12, weight: game.mode == mode ? .bold : .regular))
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .foregroundStyle(game.mode == mode ? Color.accentColor : Classic.dark)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("mode-\(mode.rawValue)")
+                .accessibilityAddTraits(game.mode == mode ? [.isSelected] : [])
+            }
         }
+        .background(Classic.face)
+        .overlay(alignment: .top) { Rectangle().fill(Classic.shadow).frame(height: 1) }
     }
 }
 
@@ -117,6 +139,33 @@ struct AboutButton: View {
         Button(action: action) {
             Label("关于", systemImage: "info.circle")
         }
+        .foregroundStyle(Color.black)
         .accessibilityLabel("关于")
     }
 }
+
+/// 显式使用黑色，避免系统导航标题在深色环境中变成白色。
+private struct AppTitle: View {
+    var body: some View {
+        Text("复扫雷")
+            .font(.headline)
+            .foregroundStyle(Color.black)
+            .accessibilityIdentifier("app-title")
+    }
+}
+
+#if os(macOS)
+/// 保留窗口名称供系统识别，屏幕上由黑色的 SwiftUI 标题负责显示。
+private struct MacWindowTitle: NSViewRepresentable {
+    func makeNSView(context: Context) -> TitleView { TitleView() }
+    func updateNSView(_ view: TitleView, context: Context) {
+        view.window?.titleVisibility = .hidden
+    }
+    final class TitleView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.titleVisibility = .hidden
+        }
+    }
+}
+#endif

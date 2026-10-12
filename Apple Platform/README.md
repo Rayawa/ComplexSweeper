@@ -1,5 +1,8 @@
 # Apple 平台移植与工程说明
 
+**当前版本 1.1.0（build 2）**。底部 Tabs 切换圆复数 / 闵可夫斯基模式；iOS / iPadOS 使用棋盘上方分段 `Picker` 选择难度，macOS 使用窗口工具栏。
+下载与签名说明见 [v1.1.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.1.0)。
+
 本目录是复扫雷的 iOS / iPadOS / macOS 原生工程，使用单一 SwiftUI target。
 应用介绍、玩法、原作致谢与共同移植范围见[仓库总 README](../README.md)。以下命令均在 `Apple Platform/` 中执行。
 
@@ -45,7 +48,8 @@ Apple Platform/
 
 ## 移植架构与平台适配
 
-`Model` 使用整数实虚分量和模长平方表达规则，`Engine` 保持与其他两端相同的 mulberry32 随机数和固定种子行为。
+`Model` 使用整数实虚分量表达规则：圆复数存储 a²+b²，闵可夫斯基存储有符号整数 a²−b²。雷格使用独立雷型字段判定，双曲负显示值按 √|D|i 格式显示。
+`Engine` 保持与其他两端相同的 mulberry32 随机数和固定种子行为；双曲展开采用原作默认严格判据，只有真正无雷的空白格自动扩散。
 UI 将操作交给 `GameController`，由控制器调用 `Board.reveal`、`cycleFlag`、`tryExpand`，并处理计时、战绩、音效及提示。
 首击布雷由引擎完成，避免在界面重复执行开局逻辑。
 
@@ -56,6 +60,9 @@ UI 将操作交给 `GameController`，由控制器调用 `Board.reveal`、`cycle
 iOS / iPadOS 的格子使用 UIKit `TouchCatcher`：轻点必须等待 400ms 长按识别器失败，抬手、取消和滚动都会清除按下态。
 macOS 使用 AppKit `MouseButtonCatcher`，左键翻开未翻开的格子，右键标记或展开数字格。
 共用布局把格子边长限制在 16–36pt，像素图片关闭插值。
+模式切换保留难度，难度切换保留模式；两者都重开，重复选择当前项保留局面。UserDefaults 按两个模式 × 三档难度保存战绩，圆复数原有存档键保持不变。
+
+标题使用共享 `AppTitle`，明确指定黑色，在系统深浅色下保持一致。macOS 隐藏系统绘制的标题文字，并在工具栏显示共享标题；窗口标题仍保留供系统使用。
 原作者署名使用 SwiftUI `Link` 打开上游 GitHub。
 
 ## 素材与图标生成
@@ -69,6 +76,7 @@ node --experimental-strip-types Tools/make-icon.ts \
   assets/atlas.json assets/atlas.png ComplexSweeper-Apple/Assets.xcassets
 ```
 
+切图脚本导出全部 116 个上游槽位，含 j 雷 / 旗、双曲数字和 LED j 单位。
 游戏贴图使用单份原始位图 imageset，由视图最近邻放大。
 应用图标从原作 32×32 `icon` 槽位生成：1024px 母图中主体为 512px，居中、银灰底，iOS 与 macOS 主体比例一致。
 iOS 输出一张 1024px 图标；macOS 输出 16–512pt 的 1x / 2x 尺寸。
@@ -93,7 +101,7 @@ xcodebuild build -project ComplexSweeper-Apple.xcodeproj -scheme ComplexSweeper-
 
 # macOS Release App
 xcodebuild build -project ComplexSweeper-Apple.xcodeproj -scheme ComplexSweeper-Apple \
-  -configuration Release -destination 'platform=macOS' \
+  -configuration Release -destination 'generic/platform=macOS' \
   -derivedDataPath .build/macos CODE_SIGNING_ALLOWED=NO
 ```
 
@@ -111,8 +119,15 @@ xcodebuild test -project ComplexSweeper-Apple.xcodeproj -scheme ComplexSweeper-A
 
 测试设备名称按 `xcrun simctl list devices available` 调整。受限环境若阻止 Swift 宏插件，可为本地构建添加 `OTHER_SWIFT_FLAGS=-disable-sandbox`。
 
-合并目录前的验证（2026-10-11）：引擎自检通过，iPhone 18 Pro / iOS 27 模拟器上 7 项 XCUITest 全部通过，macOS 共用目标构建通过。
-覆盖首击保护、轻点 / 长按、完整旗帜循环、计雷器刷新、高级拖动与重开复位、反复切难度及教程弹层。
+2026-10-12，1.1.0 验证：
+
+- Swift 引擎自检通过各 360 局两种模式、39 个双曲显示值、178,200 次展开判据与固定种子回归；旧存档兼容和战绩隔离检查通过。
+- iPhone 18 Pro / iOS 27 模拟器上 8 项 XCUITest 全部通过，覆盖首击保护、旗帜循环、计雷器、高级拖动与重开、反复切换、教程以及新增模式。
+- iPhone 17 / iOS 27.2 安装开发签名 1.1.0 后，经官方 Device Hub 完成模式 / 难度、旗帜、长按保护、计雷器、重开与拖动验收；深浅色下标题均为黑色。
+- macOS 本机完成左键翻开、右键标记 / 展开、模式 / 难度切换、负显示值、教程和黑色标题验收；状态提示已使用桌面鼠标措辞。
+
+iPhone 无线 XCUITest 运行器未建立测试通道，真机自动化未执行。上述 8 项 XCUITest 来自模拟器；iPad 未做本次真机验收。
+完整同步记录见 [MODE_SYNC.md](../docs/MODE_SYNC.md)。
 
 ## 三端同步与维护
 

@@ -1,4 +1,4 @@
-import { ACHIEVABLE, TYPES } from '../model/Complex';
+import { ACHIEVABLE, TYPES, MODE_COMPLEX, MODE_HYPER } from '../model/Complex';
 
 /** 动作结果，界面据此决定要不要播音效、闪脸 */
 export const ACT_IGNORED: number = 0;
@@ -55,7 +55,7 @@ export class Cell {
   readonly col: number;
   /** -1 表示不是雷；0..3 是 TYPES 的下标，代表 +1 / -1 / +i / -i */
   mineKind: number = -1;
-  /** 邻域地雷复数之和的模长平方 a²+b²，只在非雷格上有意义 */
+  /** 邻域显示值：圆复数 a²+b²，双曲 a²−b²；负值有效，雷格由 mineKind 区分 */
   clue: number = -1;
   /** 邻域里的真实雷数。非雷格上它等于 0 才叫"空白格" */
   nbrMines: number = 0;
@@ -102,6 +102,7 @@ export class Board {
   readonly w: number;
   /** 行数 */
   readonly h: number;
+  readonly mode: number;
   readonly requestedMines: number;
   readonly cells: Cell[] = [];
   /** 各类雷的实际总数，下标 0..3 对应 TYPES。开局公开。 */
@@ -119,7 +120,8 @@ export class Board {
   /** 上一次展开判定是否失败，界面用来提示"这样展开不合法" */
   private judgeFailed: boolean = false;
 
-  constructor(w: number, h: number, mines: number, seed: number) {
+  constructor(w: number, h: number, mines: number, seed: number, mode: number = MODE_COMPLEX) {
+    this.mode = mode;
     this.w = w;
     this.h = h;
     this.requestedMines = mines;
@@ -258,8 +260,8 @@ export class Board {
         mines++;
       }
       cell.nbrMines = mines;
-      // 存模长平方而不是模长：整数、可精确比较、可直接当贴图下标
-      cell.clue = a * a + b * b;
+      // 存整数显示值，保留双曲模式的符号，避免浮点误差
+      cell.clue = this.mode === MODE_HYPER ? a * a - b * b : a * a + b * b;
     }
   }
 
@@ -305,13 +307,19 @@ export class Board {
   /**
    * 展开判据：邻域旗数等于真实雷数，且"显示值区分不出来的差别"允许存在。
    *
-   * 显示的是模长，整体取负看不出来，实虚交换也看不出来，
+   * 圆复数显示的是模长，整体取负与实虚交换不可区分；双曲模式按净和分量分别比较。
+   * 圆复数模式下，
    * 所以只要求实虚比例等于真值比例、或者等于它的倒数。
    * 玩家可以拿这一点去试探周围有没有抵消对。
    */
   private matchComboTruth(idx: number): boolean {
     if (this.cells[idx].nbrMines !== this.nbrFlagCount(idx)) {
       return false;
+    }
+    if (this.mode === MODE_HYPER) {
+      const truth: number[] = this.sumsOf(idx, false);
+      const flags: number[] = this.sumsOf(idx, true);
+      return Math.abs(truth[0]) === Math.abs(flags[0]) && Math.abs(truth[1]) === Math.abs(flags[1]);
     }
     let tr: number = 0;
     let ti: number = 0;

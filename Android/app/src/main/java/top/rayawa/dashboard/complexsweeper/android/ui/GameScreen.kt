@@ -18,6 +18,13 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import top.rayawa.dashboard.complexsweeper.android.model.GameMode
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,10 +85,11 @@ fun GameScreen(game: GameController) {
                 .windowInsetsPadding(WindowInsets.systemBars)
         ) {
             TopBar(onAbout = { showTutorial = true })
+            DifficultyBar(game)
             HeaderPanel(game, pageHeight)
             BoardPanel(game, Modifier.weight(1f))
             StatusLine(game)
-            DifficultyBar(game)
+            ModeBar(game)
         }
     }
 
@@ -125,29 +133,33 @@ private fun TopBar(onAbout: () -> Unit) {
  */
 @Composable
 private fun DifficultyBar(game: GameController) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Classic.Face)
-            .padding(vertical = 4.dp),
-    ) {
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
         for (i in DIFFICULTIES.indices) {
-            val selected = game.difficultyIndex == i
+            SegmentedButton(
+                selected = game.difficultyIndex == i,
+                onClick = { game.selectDifficulty(i) },
+                shape = SegmentedButtonDefaults.itemShape(i, DIFFICULTIES.size),
+                modifier = Modifier.testTag("difficulty-$i"),
+            ) { Text(DIFFICULTIES[i].label) }
+        }
+    }
+}
+
+@Composable
+private fun ModeBar(game: GameController) {
+    Row(Modifier.fillMaxWidth().background(Classic.Face).padding(vertical = 8.dp)) {
+        for (mode in GameMode.entries) {
+            val selected = game.mode == mode
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .pointerInput(i) { detectTapGestures { game.selectDifficulty(i) } }
-                    .padding(vertical = 4.dp),
+                Modifier.weight(1f).testTag("mode-${mode.ordinal}")
+                    .selectable(selected = selected, role = Role.Tab, onClick = { game.selectMode(mode) })
+                    .padding(vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                PixelImage(Sprites.tab(i), 24.dp, 24.dp)
-                Text(
-                    text = DIFFICULTIES[i].label,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (selected) Classic.Dark else Classic.Shadow,
-                )
+                PixelImage(Sprites.flag(3, mode), 24.dp, 24.dp)
+                Text(mode.label, fontSize = 12.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (selected) Classic.Dark else Classic.Shadow)
             }
         }
     }

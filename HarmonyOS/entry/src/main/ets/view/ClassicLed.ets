@@ -22,6 +22,7 @@ export struct LedReadout {
   slots: number = 4;
   /** 最后一格是 i 单位（正虚雷、负虚雷用） */
   imagUnit: boolean = false;
+  @Prop hyperUnit: boolean = false;
   /**
    * 单格宽度；高度按贴图比例 23:13 算。
    * 必须是 @Prop：矮窗（横屏、分屏、自由窗口）下父组件会把数码管一起收小，
@@ -62,7 +63,7 @@ export struct LedReadout {
       out[pos - 1] = CELL_MINUS;
     }
     if (this.imagUnit) {
-      out[this.slots - 1] = CELL_UNIT_I;
+      out[this.slots - 1] = this.hyperUnit ? 13 : CELL_UNIT_I;
     }
     return out;
   }

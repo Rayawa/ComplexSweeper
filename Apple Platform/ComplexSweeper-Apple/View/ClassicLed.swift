@@ -15,6 +15,7 @@ struct LedReadout: View {
     var slots: Int = 4
     /// 最后一格是 i 单位（正虚雷、负虚雷用）
     var imagUnit: Bool = false
+    var hyperUnit: Bool = false
     /// 单格宽度；高度按贴图比例 23:13 算
     var cellWidth: CGFloat = 13
     /// 还没开局时不显示任何数字 —— 那时各类雷的颗数还没抽出来
@@ -42,7 +43,7 @@ struct LedReadout: View {
             out[pos - 1] = CELL_MINUS
         }
         if imagUnit && slots > 0 {
-            out[slots - 1] = CELL_UNIT_I
+            out[slots - 1] = hyperUnit ? 13 : CELL_UNIT_I
         }
         return out
     }

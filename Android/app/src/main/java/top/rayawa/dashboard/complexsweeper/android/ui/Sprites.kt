@@ -2,6 +2,8 @@ package top.rayawa.dashboard.complexsweeper.android.ui
 
 import androidx.annotation.DrawableRes
 import top.rayawa.dashboard.complexsweeper.android.R
+import top.rayawa.dashboard.complexsweeper.android.model.GameMode
+import top.rayawa.dashboard.complexsweeper.android.model.HYPER_ACHIEVABLE
 import top.rayawa.dashboard.complexsweeper.android.model.ACHIEVABLE
 
 /**
@@ -17,9 +19,9 @@ import top.rayawa.dashboard.complexsweeper.android.model.ACHIEVABLE
  */
 object Sprites {
 
-    /** 数字贴图：下标是 a²+b²（0…64），只有 ACHIEVABLE 里那 24 个有图 */
+    /** 数字贴图：按模式查询24个圆复数值或39个双曲有符号值 */
     @DrawableRes
-    fun num(clue: Int): Int = when (clue) {
+    fun num(clue: Int, mode: GameMode = GameMode.COMPLEX): Int = if (mode == GameMode.HYPER) hyperNum(clue) else when (clue) {
         0 -> R.drawable.cw_num_0
         1 -> R.drawable.cw_num_1
         2 -> R.drawable.cw_num_2
@@ -47,11 +49,15 @@ object Sprites {
     }
 
     /** 数字贴图是否存在。不存在的值只能画成空白。 */
-    fun hasNum(clue: Int): Boolean = ACHIEVABLE.contains(clue)
+    fun hasNum(clue: Int, mode: GameMode = GameMode.COMPLEX): Boolean =
+        (if (mode == GameMode.HYPER) HYPER_ACHIEVABLE else ACHIEVABLE).contains(clue)
 
     /** 插着的旗，按玩家插的那一型取图（1=+1 2=-1 3=+i 4=-i） */
     @DrawableRes
-    fun flag(t: Int): Int = when (clampType(t)) {
+    fun flag(t: Int, mode: GameMode = GameMode.COMPLEX): Int =
+        if (mode == GameMode.HYPER && t in 3..4) {
+            if (t == 3) R.drawable.cw_hflag_3 else R.drawable.cw_hflag_4
+        } else when (clampType(t)) {
         1 -> R.drawable.cw_flag_1
         2 -> R.drawable.cw_flag_2
         3 -> R.drawable.cw_flag_3
@@ -60,7 +66,10 @@ object Sprites {
 
     /** 亮出来的雷，按真实雷型取图 */
     @DrawableRes
-    fun mine(t: Int): Int = when (clampType(t)) {
+    fun mine(t: Int, mode: GameMode = GameMode.COMPLEX): Int =
+        if (mode == GameMode.HYPER && t in 3..4) {
+            if (t == 3) R.drawable.cw_hmine_3 else R.drawable.cw_hmine_4
+        } else when (clampType(t)) {
         1 -> R.drawable.cw_mine_1
         2 -> R.drawable.cw_mine_2
         3 -> R.drawable.cw_mine_3
@@ -69,7 +78,10 @@ object Sprites {
 
     /** 踩中的那一颗，同色雷 + 红底 */
     @DrawableRes
-    fun boom(t: Int): Int = when (clampType(t)) {
+    fun boom(t: Int, mode: GameMode = GameMode.COMPLEX): Int =
+        if (mode == GameMode.HYPER && t in 3..4) {
+            if (t == 3) R.drawable.cw_hboom_3 else R.drawable.cw_hboom_4
+        } else when (clampType(t)) {
         1 -> R.drawable.cw_boom_1
         2 -> R.drawable.cw_boom_2
         3 -> R.drawable.cw_boom_3
@@ -78,7 +90,10 @@ object Sprites {
 
     /** 结算：插对的旗（插在雷上），按玩家插的那型出图，旗上画绿勾 */
     @DrawableRes
-    fun rightFlag(t: Int): Int = when (clampType(t)) {
+    fun rightFlag(t: Int, mode: GameMode = GameMode.COMPLEX): Int =
+        if (mode == GameMode.HYPER && t in 3..4) {
+            if (t == 3) R.drawable.cw_hrightflag_3 else R.drawable.cw_hrightflag_4
+        } else when (clampType(t)) {
         1 -> R.drawable.cw_rightflag_1
         2 -> R.drawable.cw_rightflag_2
         3 -> R.drawable.cw_rightflag_3
@@ -121,6 +136,7 @@ object Sprites {
         in 0..9 -> LED_DIGITS[cell]
         10 -> R.drawable.cw_led_minus
         11 -> R.drawable.cw_led_i
+        13 -> R.drawable.cw_led_j
         else -> R.drawable.cw_led_blank
     }
 
@@ -136,6 +152,50 @@ object Sprites {
     )
 
     private val TABS = intArrayOf(R.drawable.cw_tab_1, R.drawable.cw_tab_2, R.drawable.cw_tab_3)
+
+    @DrawableRes
+    private fun hyperNum(clue: Int): Int = when (clue) {
+        -64 -> R.drawable.cw_hnum_64_i
+        -49 -> R.drawable.cw_hnum_49_i
+        -48 -> R.drawable.cw_hnum_48_i
+        -36 -> R.drawable.cw_hnum_36_i
+        -35 -> R.drawable.cw_hnum_35_i
+        -32 -> R.drawable.cw_hnum_32_i
+        -25 -> R.drawable.cw_hnum_25_i
+        -24 -> R.drawable.cw_hnum_24_i
+        -21 -> R.drawable.cw_hnum_21_i
+        -16 -> R.drawable.cw_hnum_16_i
+        -15 -> R.drawable.cw_hnum_15_i
+        -12 -> R.drawable.cw_hnum_12_i
+        -9 -> R.drawable.cw_hnum_9_i
+        -8 -> R.drawable.cw_hnum_8_i
+        -7 -> R.drawable.cw_hnum_7_i
+        -5 -> R.drawable.cw_hnum_5_i
+        -4 -> R.drawable.cw_hnum_4_i
+        -3 -> R.drawable.cw_hnum_3_i
+        -1 -> R.drawable.cw_hnum_1_i
+        0 -> R.drawable.cw_num_0
+        1 -> R.drawable.cw_num_1
+        3 -> R.drawable.cw_hnum_3
+        4 -> R.drawable.cw_num_4
+        5 -> R.drawable.cw_num_5
+        7 -> R.drawable.cw_hnum_7
+        8 -> R.drawable.cw_num_8
+        9 -> R.drawable.cw_num_9
+        12 -> R.drawable.cw_hnum_12
+        15 -> R.drawable.cw_hnum_15
+        16 -> R.drawable.cw_num_16
+        21 -> R.drawable.cw_hnum_21
+        24 -> R.drawable.cw_hnum_24
+        25 -> R.drawable.cw_num_25
+        32 -> R.drawable.cw_num_32
+        35 -> R.drawable.cw_hnum_35
+        36 -> R.drawable.cw_num_36
+        48 -> R.drawable.cw_hnum_48
+        49 -> R.drawable.cw_num_49
+        64 -> R.drawable.cw_num_64
+        else -> R.drawable.cw_blank
+    }
 
     private fun clampType(t: Int): Int = t.coerceIn(1, 4)
 }

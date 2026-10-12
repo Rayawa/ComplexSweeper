@@ -56,19 +56,12 @@ if (src.width !== atlas.width || src.height !== atlas.height) {
   throw new Error(`图集尺寸对不上：JSON 说 ${atlas.width}x${atlas.height}，PNG 是 ${src.width}x${src.height}`);
 }
 
-// 双曲复数模式（j²=1）那批素材这次用不到，跳过。
-// led_j 是那个模式的 j 单位，前缀不带 h，得单独排掉。
-const HYPER = /^(h(num|flag|mine|boom|wrong|right|led)|led_j$)/;
+// 两种模式使用同一份完整图集。
 
 fs.mkdirSync(catalogDir, { recursive: true });
 let written = 0;
-const skipped: string[] = [];
 
 for (const slot of atlas.slots as Slot[]) {
-  if (HYPER.test(slot.name)) {
-    skipped.push(slot.name);
-    continue;
-  }
   const name = `${prefix}${slot.name}`;
   if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) {
     throw new Error(`资源名不合规：${name}`);
@@ -81,4 +74,4 @@ for (const slot of atlas.slots as Slot[]) {
   written++;
 }
 
-console.log(`切出 ${written} 张 imageset，跳过 ${skipped.length} 张双曲模式素材，输出到 ${catalogDir}`);
+console.log(`切出 ${written} 张 imageset，输出到 ${catalogDir}`);

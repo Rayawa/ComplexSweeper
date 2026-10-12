@@ -4,6 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import top.rayawa.dashboard.complexsweeper.android.model.GameMode
+import top.rayawa.dashboard.complexsweeper.android.model.HYPER_ACHIEVABLE
+import top.rayawa.dashboard.complexsweeper.android.model.formatClue
 import top.rayawa.dashboard.complexsweeper.android.engine.ACT_BOOM
 import top.rayawa.dashboard.complexsweeper.android.engine.ACT_IGNORED
 import top.rayawa.dashboard.complexsweeper.android.engine.ACT_JUDGE_FAIL
@@ -405,6 +408,52 @@ class EngineCheckTest {
             val b = Board(d.w, d.h, d.mines, 5)
             b.startAt(d.h / 2, d.w / 2)
             assertEquals("${d.label} 的雷数不对", d.mines, b.cells.count { it.mineKind >= 0 })
+        }
+    }
+
+    @Test fun hyperSignedCluesAndStrictExpansion() {
+        val combos=mutableListOf<List<Int>>()
+        val values=mutableSetOf<Int>()
+        for(p in 0..8) for(n in 0..8-p) for(j in 0..8-p-n) for(k in 0..8-p-n-j) {
+            combos.add(listOf(p,n,j,k));values.add((p-n)*(p-n)-(j-k)*(j-k))
+        }
+        assertEquals(495,combos.size);assertEquals(HYPER_ACHIEVABLE,values.sorted())
+        assertEquals("i",formatClue(-1));assertEquals("2√3i",formatClue(-12))
+        var checks=0;var negative=0;var lightlike=0
+        for(d in DIFFICULTIES) for(seed in 1..120) {
+            val b=Board(d.w,d.h,d.mines,seed,GameMode.HYPER);b.startAt(d.h/2,d.w/2)
+            for(i in b.cells.indices) if(!b.cells[i].isMine) {
+                val c=b.cells[i];var a=0;var j=0;var count=0
+                for(n in neighborsOf(b,i)) if(b.cells[n].isMine) {
+                    val t=MINE_TYPES[b.cells[n].mineKind];a+=t.re;j+=t.im;count++
+                }
+                assertEquals(a*a-j*j,c.clue);assertEquals(count,c.nbrMines);assertTrue(values.contains(c.clue))
+                if(c.clue<0)negative++
+                if(c.clue==0 && count>0){lightlike++;assertFalse(c.isBlank)}
+            }
+            val center=b.cells.indices.first{!b.cells[it].isMine && b.cells[it].nbrMines>0 && neighborsOf(b,it).size==8}
+            val ns=neighborsOf(b,center);var ta=0;var tb=0;var nt=0
+            for(n in ns) if(b.cells[n].isMine){val t=MINE_TYPES[b.cells[n].mineKind];ta+=t.re;tb+=t.im;nt++}
+            for(cc in combos) {
+                val flags=cc.flatMapIndexed{t,n->List(n){t+1}}
+                for(i in 0..7)b.cells[ns[i]].flag=flags.getOrElse(i){0}
+                val fa=cc[0]-cc[1];val fb=cc[2]-cc[3]
+                val signs=listOf(ta to tb,-ta to tb,ta to -tb,-ta to -tb)
+                val expected=flags.size==nt && signs.contains(fa to fb)
+                assertEquals(expected,b.matchComboTruth(center));checks++
+            }
+        }
+        assertEquals(178200,checks);assertTrue(negative>0 && lightlike>0)
+    }
+    @Test fun hyperReferenceFingerprints() {
+        val cases=listOf(intArrayOf(9,9,10,1,4,4) to "1a6bf9f4",intArrayOf(16,16,40,8,8,8) to "4759fc78",intArrayOf(30,16,99,5,8,15) to "37233296",intArrayOf(9,9,10,2024,0,0) to "a0ef92af",intArrayOf(16,16,40,31337,15,15) to "7b20fba3",intArrayOf(30,16,99,123456,0,29) to "8de13a32")
+        for((args,expected) in cases) {
+            val b=Board(args[0],args[1],args[2],args[3],GameMode.HYPER);b.startAt(args[4],args[5])
+            val parts=b.cells.map{"${it.mineKind+1},${it.clue},${it.nbrMines},${if(it.isOpen)1 else 0}"}.toMutableList()
+            for(t in 0..3)parts.add("T${b.typeTotal[t]},${b.unmarked(t)}")
+            parts.add("over${b.isOver()}won${b.isWon()}");var hash=0x811c9dc5.toInt()
+            for(c in parts.joinToString(";"))hash=(hash xor c.code)*0x01000193
+            assertEquals(expected,(hash.toLong() and 0xffffffffL).toString(16).padStart(8,'0'))
         }
     }
 }

@@ -1,3 +1,4 @@
+import { TYPE_LABELS, HYPER_TYPE_LABELS, MODE_HYPER, formatClue } from '../model/Complex';
 import { Cell, MARK_MINE, MARK_RIGHT_FLAG, MARK_WRONG_BLANK } from '../engine/Board';
 import { hasNumSprite } from './Sprites';
 import {
@@ -26,6 +27,7 @@ export struct CellView {
    * onAreaChange 才知道。用普通变量的话，首屏会一直停在 16vp 那个小尺寸上。
    */
   @Prop edge: number = 16;
+  @Prop mode: number = 0;
   onReveal: (row: number, col: number) => void = () => {
   };
   onFlag: (row: number, col: number) => void = () => {
@@ -41,9 +43,9 @@ export struct CellView {
         return wrongBlankSprite();
       case MARK_RIGHT_FLAG:
         // 按玩家自己插的那型出图：结算只看位置，不评判雷型对不对得上
-        return rightFlagSprite(this.cell.flag);
+        return rightFlagSprite(this.cell.flag, this.mode);
       case MARK_MINE:
-        return mineSprite(kind);
+        return mineSprite(kind, this.mode);
       default:
         return null;
     }
@@ -54,27 +56,43 @@ export struct CellView {
       if (this.cell.mineKind >= 0) {
         // 踩中的那颗底色是红的，其余的雷只是亮出来
         const kind: number = this.cell.mineKind + 1;
-        return this.cell.exploded ? boomSprite(kind) : mineSprite(kind);
+        return this.cell.exploded ? boomSprite(kind, this.mode) : mineSprite(kind, this.mode);
       }
       // 空白格（邻域一颗雷都没有）和显示 0（周围全是抵消对）是两回事，
       // 贴图也不同：前者是没字的平板，后者画着 "0"。
       if (this.cell.isBlank()) {
         return blankSprite();
       }
-      return hasNumSprite(this.cell.clue) ? numSprite(this.cell.clue) : blankSprite();
+      return hasNumSprite(this.cell.clue, this.mode) ? numSprite(this.cell.clue, this.mode) : blankSprite();
     }
     const mark: Resource | null = this.endMarkSprite();
     if (mark !== null) {
       return mark;
     }
     if (this.cell.flag > 0) {
-      return flagSprite(this.cell.flag);
+      return flagSprite(this.cell.flag, this.mode);
     }
     return closedSprite();
   }
 
+  private description(): string {
+    const position: string = `第 ${this.cell.row + 1} 行，第 ${this.cell.col + 1} 列`;
+    if (this.cell.open) {
+      if (this.cell.isMine()) { return `${position}，${this.cell.exploded ? '踩中的雷' : '雷'}`; }
+      return `${position}，${this.cell.isBlank() ? '空白' : '数字 ' + formatClue(this.cell.clue)}`;
+    }
+    if (this.cell.endMark === MARK_WRONG_BLANK) { return `${position}，标错的位置`; }
+    if (this.cell.endMark === MARK_RIGHT_FLAG) { return `${position}，标对的位置`; }
+    if (this.cell.endMark === MARK_MINE) { return `${position}，雷`; }
+    const labels: string[] = this.mode === MODE_HYPER ? HYPER_TYPE_LABELS : TYPE_LABELS;
+    return `${position}，${this.cell.flag > 0 ? '旗帜 ' + labels[this.cell.flag - 1] : '未翻开'}`;
+  }
+
   build() {
     Image(this.sprite())
+      .id(`cell-${this.cell.row}-${this.cell.col}`)
+      .accessibilityText(`第 ${this.cell.row + 1} 行，第 ${this.cell.col + 1} 列`)
+      .accessibilityDescription(this.description())
       .width(this.edge)
       .height(this.edge)
       // 像素画放大必须用最近邻，插值一开就糊成一团

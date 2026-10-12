@@ -1,7 +1,8 @@
 import { BlurStrategy, HdsNavigation, HdsNavigationTitleMode, HdsTabs, HdsTabsController, ScrollEffectType } from '@kit.UIDesignKit';
-import { display, LengthMetrics } from '@kit.ArkUI';
+import { ColorMetrics, display, LengthMetrics, SegmentButtonV2Items, TabSegmentButtonV2 } from '@kit.ArkUI';
 import { systemDateTime } from '@kit.BasicServicesKit';
 import { ACT_BOOM, ACT_IGNORED, ACT_JUDGE_FAIL, ACT_OK, Board, Cell } from '../engine/Board';
+import { MODE_COMPLEX, MODE_HYPER, TYPE_LABELS, HYPER_TYPE_LABELS } from '../model/Complex';
 import { DIFFICULTIES, Difficulty } from '../model/Difficulty';
 import { DifficultyStats, StatsStore } from '../model/Stats';
 import { CellView } from '../view/CellView';
@@ -121,7 +122,8 @@ struct Index {
   @State board: Board =
     new Board(DIFFICULTIES[0].w, DIFFICULTIES[0].h, DIFFICULTIES[0].mines, 1);
   @State difficultyIndex: number = 0;
-  @State selectedTab: number = 0;
+  @State selectedTab: number = MODE_COMPLEX;
+  @State mode: number = MODE_COMPLEX;
   @State gameState: GameState = GameState.READY;
   @State elapsed: number = 0;
   /** 每次开新局自增。它是 ForEach 的 key 的一部分，用来强制重建所有格子组件。 */
@@ -150,8 +152,14 @@ struct Index {
    */
   @State flagMarks: number[] = [0, 0, 0, 0];
 
+  private difficultyItems: SegmentButtonV2Items = new SegmentButtonV2Items([
+    { text: '初级', accessibilityText: '初级难度' },
+    { text: '中级', accessibilityText: '中级难度' },
+    { text: '高级', accessibilityText: '高级难度' }
+  ]);
+
   private tabsController: HdsTabsController = new HdsTabsController();
-  private stats: StatsStore = new StatsStore(DIFFICULTIES.length);
+  private stats: StatsStore = new StatsStore(DIFFICULTIES.length * 2);
   private sound: SoundBoard = new SoundBoard();
   private timerId: number = -1;
   private hintTimerId: number = -1;
@@ -208,7 +216,7 @@ struct Index {
   }
 
   private syncBest(): void {
-    const s: DifficultyStats = this.stats.get(this.difficultyIndex);
+    const s: DifficultyStats = this.stats.get(this.statsIndex());
     this.bestSeconds = s.bestSeconds;
   }
 
@@ -232,7 +240,7 @@ struct Index {
     this.difficultyIndex = index;
     // 线性同余推进种子：每次开新局都是不同的棋盘，但种子可复现
     this.seed = (this.seed * 1664525 + 1013904223) >>> 0;
-    this.board = new Board(d.w, d.h, d.mines, this.seed);
+    this.board = new Board(d.w, d.h, d.mines, this.seed, this.mode);
     this.rowIndexes = range(d.h);
     this.colIndexes = range(d.w);
     this.gameState = GameState.READY;
@@ -245,11 +253,17 @@ struct Index {
     this.syncBest();
   }
 
-  /** 切换难度标签：换难度才重开 */
+  /** 圆复数沿用旧存档槽位，双曲单独使用后三档。 */
+  private statsIndex(): number {
+    return this.mode * DIFFICULTIES.length + this.difficultyIndex;
+  }
+
+  /** 模式 Tabs：只有换模式才重开，保留当前难度。 */
   private onTabChanged(index: number): void {
     this.selectedTab = index;
-    if (index !== this.difficultyIndex) {
-      this.newGame(index);
+    if (index !== this.mode) {
+      this.mode = index;
+      this.newGame(this.difficultyIndex);
     }
   }
 
@@ -285,7 +299,7 @@ struct Index {
       // 真存进去一个 0 秒会把这条纪录变成"不存在"
       const seconds: number = this.elapsed > 0 ? this.elapsed : 1;
       this.newRecord = this.bestSeconds === 0 || seconds < this.bestSeconds;
-      this.stats.recordWin(this.difficultyIndex, seconds).then(() => {
+      this.stats.recordWin(this.statsIndex(), seconds).then(() => {
         this.syncBest();
       }).catch(() => {
       });
@@ -294,7 +308,7 @@ struct Index {
       // 踩雷音按踩中的那一颗的雷型播，四种雷声音不同
       const boom: number = this.board.boomIndex();
       this.sound.playMine(boom >= 0 ? this.board.cells[boom].mineKind : 0);
-      this.stats.recordLoss(this.difficultyIndex).catch(() => {
+      this.stats.recordLoss(this.statsIndex()).catch(() => {
       });
     }
   }
@@ -472,7 +486,7 @@ struct Index {
   @Builder
   Counter(t: number) {
     Row() {
-      Image(flagSprite(t + 1))
+      Image(flagSprite(t + 1, this.mode))
         .width(this.ledIcon())
         .height(this.ledIcon())
         .interpolation(ImageInterpolation.None)
@@ -480,10 +494,14 @@ struct Index {
         value: this.counterValue(t),
         slots: 4,
         imagUnit: t >= 2,
+        hyperUnit: this.mode === MODE_HYPER,
         cellWidth: this.ledCell(),
         blankAll: !this.board.isStarted()
       })
     }
+    .id(`counter-${t}`)
+    .accessibilityText('计雷器')
+    .accessibilityDescription(`${(this.mode === MODE_HYPER ? HYPER_TYPE_LABELS : TYPE_LABELS)[t]} 剩余雷数 ${this.board.isStarted() ? this.counterValue(t).toString() : '开局后公布'}`)
     .padding({ left: 2, right: 2 })
   }
 
@@ -507,6 +525,8 @@ struct Index {
 
       Column({ space: 6 }) {
         Image(faceSprite(this.faceKind()))
+          .id('restart')
+          .accessibilityText('重新开始')
           .width(FACE_SIZE)
           .height(FACE_SIZE)
           .interpolation(ImageInterpolation.None)
@@ -549,6 +569,7 @@ struct Index {
           ForEach(this.colIndexes, (col: number) => {
             CellView({
               cell: this.board.cells[row * this.board.w + col],
+              mode: this.mode,
               edge: this.edge(),
               onReveal: (r: number, c: number) => {
                 this.handleReveal(r, c);
@@ -656,12 +677,44 @@ struct Index {
    * 沉浸由 HdsNavigation 上的 ignoreLayoutSafeArea 负责，内容区本身就是整屏的，
    * 所以这里只要铺个底色、上下各让出悬浮栏的位置就行 —— 不需要再自己 expandSafeArea。
    */
+  private selectDifficulty(index: number): void {
+    if (index >= 0 && index < DIFFICULTIES.length && index !== this.difficultyIndex) {
+      this.newGame(index);
+    }
+  }
+
+  /** 与 Dashboard 的 HdsTitleBarSegment 一样，使用系统 V2 分段按钮。 */
+  @Builder
+  DifficultySelector() {
+    TabSegmentButtonV2({
+      items: this.difficultyItems,
+      selectedIndex: this.difficultyIndex,
+      $selectedIndex: (index: number): void => { this.selectDifficulty(index); },
+      onItemClicked: (index: number): void => { this.selectDifficulty(index); },
+      itemMaxFontScale: 2,
+      itemFontColor: ColorMetrics.resourceColor($r('app.color.classic_dark')),
+      itemSelectedFontColor: ColorMetrics.resourceColor($r('app.color.classic_dark')),
+      itemSelectedBackgroundColor: ColorMetrics.rgba(102, 102, 102, 0.13),
+      itemMinHeight: LengthMetrics.vp(32),
+      buttonBackgroundColor: ColorMetrics.rgba(0, 0, 0, 0),
+      buttonBackgroundBlurStyle: BlurStyle.NONE,
+      buttonMinHeight: LengthMetrics.vp(40),
+      buttonPadding: LengthMetrics.vp(4),
+      enableStateAnimation: true
+    })
+    .id('difficulty-selector')
+    .width('100%')
+    .margin({ bottom: 6 })
+  }
+
   @Builder
   GamePage() {
     Column() {
+      this.DifficultySelector()
       this.HeaderPanel()
       this.BoardPanel()
       Text(this.statusText())
+        .id('status')
         .fontSize(12)
         .fontColor($r('app.color.classic_dark'))
         .width('100%')
@@ -698,19 +751,22 @@ struct Index {
         .fontColor($r('app.color.classic_dark'))
         .layoutWeight(1)
 
-      // 关掉按钮画成圆底，和标题栏那颗「关于」一个样子 —— 光一支叉子没有边界，
-      // 压在银灰面板上不像个能按的东西
-      SymbolGlyph($r('sys.symbol.xmark'))
-        .fontSize(20)
-        .fontColor([$r('app.color.classic_dark')])
-        .width(CLOSE_BUTTON_SIZE)
-        .height(CLOSE_BUTTON_SIZE)
-        .backgroundColor($r('sys.color.comp_background_tertiary'))
-        .borderRadius(CLOSE_BUTTON_SIZE / 2)
-        .accessibilityText('关闭')
-        .onClick(() => {
-          this.showTutorial = false;
-        })
+      Stack({ alignContent: Alignment.Center }) {
+        SymbolGlyph($r('sys.symbol.xmark'))
+          .id('about-close-glyph')
+          .fontSize(20)
+          .fontColor([$r('app.color.classic_dark')])
+          .width(20)
+          .height(20)
+          .hitTestBehavior(HitTestMode.None)
+      }
+      .id('about-close')
+      .width(CLOSE_BUTTON_SIZE)
+      .height(CLOSE_BUTTON_SIZE)
+      .backgroundColor($r('sys.color.comp_background_tertiary'))
+      .borderRadius(CLOSE_BUTTON_SIZE / 2)
+      .accessibilityText('关闭')
+      .onClick(() => { this.showTutorial = false; })
     }
     .width('100%')
     .padding({ left: 16, right: 16, top: 10, bottom: 6 })
@@ -722,17 +778,13 @@ struct Index {
         TabContent() {
           this.GamePage()
         }
-        .tabBar(tabBarStyle($r('app.media.cw_tab_1'), '初级'))
+        .tabBar(tabBarStyle($r('app.media.cw_flag_3'), '圆复数'))
 
         TabContent() {
           this.GamePage()
         }
-        .tabBar(tabBarStyle($r('app.media.cw_tab_2'), '中级'))
+        .tabBar(tabBarStyle($r('app.media.cw_hflag_3'), '闵可夫斯基'))
 
-        TabContent() {
-          this.GamePage()
-        }
-        .tabBar(tabBarStyle($r('app.media.cw_tab_3'), '高级'))
       }
       .barPosition(BarPosition.End)
       .scrollable(false)

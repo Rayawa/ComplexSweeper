@@ -2,7 +2,7 @@
  * 复数扫雷的数学。
  *
  * 棋盘上每个非雷格显示的是"周围八格地雷复数之和的模长"，但真正存下来的
- * 是那个和的模长平方 a²+b² —— 它恒为非负整数，可以精确比较、可以直接当
+ * 是整数显示值：圆复数 a²+b²，双曲 a²−b²（可以为负），可以精确比较、可以直接当
  * 贴图下标查表，全程不碰浮点。只有需要写出人类可读的式子时才开方。
  */
 
@@ -61,4 +61,13 @@ export function formatModulus(normSquared: number): string {
     return `√${inside}`;
   }
   return `${outside}√${inside}`;
+}
+
+export const MODE_COMPLEX: number = 0;
+export const MODE_HYPER: number = 1;
+export const MODE_LABELS: string[] = ['圆复数', '闵可夫斯基'];
+export const HYPER_TYPE_LABELS: string[] = ['+1', '-1', '+j', '-j'];
+export const HYPER_ACHIEVABLE: number[] = [-64, -49, -48, -36, -35, -32, -25, -24, -21, -16, -15, -12, -9, -8, -7, -5, -4, -3, -1, 0, 1, 3, 4, 5, 7, 8, 9, 12, 15, 16, 21, 24, 25, 32, 35, 36, 48, 49, 64];
+export function formatClue(clue: number): string {
+  return clue < 0 ? (clue === -1 ? '' : formatModulus(-clue)) + 'i' : formatModulus(clue);
 }

@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import top.rayawa.dashboard.complexsweeper.android.model.GameMode
 import top.rayawa.dashboard.complexsweeper.android.model.ACHIEVABLE
 import top.rayawa.dashboard.complexsweeper.android.model.MINE_TYPES
 
@@ -69,7 +70,7 @@ class Cell(val row: Int, val col: Int) {
     /** -1 表示不是雷；0..3 是 MINE_TYPES 的下标，代表 +1 / -1 / +i / -i */
     var mineKind by mutableIntStateOf(-1)
 
-    /** 邻域地雷复数之和的模长平方 a²+b²，只在非雷格上有意义 */
+    /** 邻域显示值：圆复数 a²+b²，双曲 a²−b²；负值有效，雷格由 mineKind 区分 */
     var clue by mutableIntStateOf(-1)
 
     /** 邻域里的真实雷数。非雷格上它等于 0 才叫「空白格」 */
@@ -115,6 +116,7 @@ class Board(
     val h: Int,
     val requestedMines: Int,
     seed: Int,
+    val mode: GameMode = GameMode.COMPLEX,
 ) {
     val cells: List<Cell>
 
@@ -237,8 +239,8 @@ class Board(
                 mines++
             }
             cell.nbrMines = mines
-            // 存模长平方而不是模长：整数、可精确比较、可直接当资源下标
-            cell.clue = a * a + b * b
+            // 存整数显示值，保留双曲模式的符号，避免浮点误差
+            cell.clue = if (mode == GameMode.HYPER) a * a - b * b else a * a + b * b
         }
     }
 
@@ -265,13 +267,24 @@ class Board(
     /**
      * 展开判据：邻域旗数等于真实雷数，且「显示值区分不出来的差别」允许存在。
      *
-     * 显示的是模长，整体取负看不出来，实虚交换也看不出来，
+     * 圆复数显示的是模长，整体取负与实虚交换不可区分；双曲模式按净和分量分别比较。
+     * 圆复数模式下，
      * 所以只要求实虚比例等于真值比例、或者等于它的倒数。
      * 玩家可以拿这一点去试探周围有没有抵消对。
      */
-    private fun matchComboTruth(idx: Int): Boolean {
+    internal fun matchComboTruth(idx: Int): Boolean {
         if (cells[idx].nbrMines != nbrFlagCount(idx)) {
             return false
+        }
+        if (mode == GameMode.HYPER) {
+            var ta = 0; var tb = 0; var fa = 0; var fb = 0
+            for (j in neighborsOf(idx)) {
+                val k = kinds[j]
+                val f = cells[j].flag
+                if (k != 0) { ta += MINE_TYPES[k - 1].re; tb += MINE_TYPES[k - 1].im }
+                if (f != 0) { fa += MINE_TYPES[f - 1].re; fb += MINE_TYPES[f - 1].im }
+            }
+            return kotlin.math.abs(ta) == kotlin.math.abs(fa) && kotlin.math.abs(tb) == kotlin.math.abs(fb)
         }
         var tr = 0
         var ti = 0

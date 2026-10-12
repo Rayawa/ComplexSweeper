@@ -13,6 +13,7 @@ import top.rayawa.dashboard.complexsweeper.android.engine.ACT_IGNORED
 import top.rayawa.dashboard.complexsweeper.android.engine.ACT_OK
 import top.rayawa.dashboard.complexsweeper.android.engine.Board
 import top.rayawa.dashboard.complexsweeper.android.model.DIFFICULTIES
+import top.rayawa.dashboard.complexsweeper.android.model.GameMode
 import top.rayawa.dashboard.complexsweeper.android.model.Difficulty
 import top.rayawa.dashboard.complexsweeper.android.model.StatsStore
 
@@ -53,12 +54,17 @@ class GameController(context: Context) : ViewModel() {
     private val appContext = context.applicationContext
     private val sound = SoundBoard(appContext)
     private val feedback = Feedback(appContext)
-    val stats = StatsStore(appContext, DIFFICULTIES.size)
+    val stats = StatsStore(appContext, DIFFICULTIES.size * GameMode.entries.size)
 
     var board by mutableStateOf(
         Board(DIFFICULTIES[0].w, DIFFICULTIES[0].h, DIFFICULTIES[0].mines, 1)
     )
         private set
+
+    var mode by mutableStateOf(GameMode.COMPLEX)
+        private set
+
+    private val statsIndex: Int get() = mode.ordinal * DIFFICULTIES.size + difficultyIndex
 
     var difficultyIndex by mutableIntStateOf(0)
         private set
@@ -124,7 +130,7 @@ class GameController(context: Context) : ViewModel() {
     }
 
     private fun syncBest() {
-        bestSeconds = stats.entry(difficultyIndex).bestSeconds
+        bestSeconds = stats.entry(statsIndex).bestSeconds
     }
 
     // ---------------- 按下状态 ----------------
@@ -150,7 +156,7 @@ class GameController(context: Context) : ViewModel() {
         difficultyIndex = index
         // 线性同余推进种子：每次开新局都是不同的棋盘，但种子可复现
         seed = seed * 1664525 + 1013904223
-        board = Board(d.w, d.h, d.mines, seed)
+        board = Board(d.w, d.h, d.mines, seed, mode)
         gameState = GameState.READY
         elapsed = 0
         newRecord = false
@@ -159,6 +165,12 @@ class GameController(context: Context) : ViewModel() {
         hintToken++
         gameId++
         syncBest()
+    }
+
+    fun selectMode(selected: GameMode) {
+        if (selected == mode) return
+        mode = selected
+        newGame(difficultyIndex)
     }
 
     /** 切换难度标签：换难度才重开 */
@@ -188,16 +200,16 @@ class GameController(context: Context) : ViewModel() {
             // 秒数下限取 1：bestSeconds 用 0 表示「还没有纪录」，
             // 真存进去一个 0 秒会把这条纪录变成「不存在」
             val seconds = if (elapsed > 0) elapsed else 1
-            val previous = stats.entry(difficultyIndex).bestSeconds
+            val previous = stats.entry(statsIndex).bestSeconds
             newRecord = previous == 0 || seconds < previous
-            stats.recordWin(difficultyIndex, seconds)
+            stats.recordWin(statsIndex, seconds)
             syncBest()
         } else {
             gameState = GameState.LOST
             // 踩雷音按踩中的那一颗的雷型播，四种雷声音不同
             val boom = board.boomIndex()
             sound.playMine(if (boom >= 0) board.cells[boom].mineKind else 0)
-            stats.recordLoss(difficultyIndex)
+            stats.recordLoss(statsIndex)
             syncBest()
         }
     }

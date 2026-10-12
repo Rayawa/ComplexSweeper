@@ -1,5 +1,8 @@
 # HarmonyOS 移植与工程说明
 
+**当前版本 1.1.0（versionCode 1001000）**。底部 HDS Tabs 切换圆复数 / 闵可夫斯基模式，棋盘上方使用 ArkUI 原生 `TabSegmentButtonV2` 选择难度。
+下载与签名说明见 [v1.1.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.1.0)。
+
 本目录是复扫雷的 ArkTS / ArkUI 原生工程，也是三端共同移动功能的移植基准。
 应用介绍、玩法、原作致谢与共同范围见[仓库总 README](../README.md)。以下命令均在 `HarmonyOS/` 中执行。
 
@@ -52,14 +55,18 @@ HarmonyOS/
 
 ## 移植架构与平台适配
 
-引擎使用整数实虚分量、模长平方和 mulberry32，保持原作的固定种子行为。
+引擎使用整数实虚分量和 mulberry32，保持原作的固定种子行为。圆复数存储 a²+b²，闵可夫斯基存储有符号整数 a²−b²，雷格通过独立雷型字段判定。
+双曲负显示值按 √|D|i 显示，展开采用原作默认严格判据；只有周围完全无雷的空白格自动扩散。
 `Board` 管理布雷、翻开、标记、展开和通关判定；`Index.ets` 管理页面状态、计时、战绩、声音与提示。
 首次翻开统一调用 `Board.reveal`，带旗首击不布雷，重复开局和越界输入由引擎防护。
 
 Cell 使用 `@Observed`，格子通过 `@ObjectLink` 观察变化；开局与插旗后同步四个计雷器。
 计时以 `systemDateTime.getUptime(STARTUP)` 计算真实用时，定时器仅触发刷新；结算前补齐最终用时，重开 / 结束清除旧提示任务。
 界面由 HDS 导航与标签页组织，棋盘随可用空间调整为 16–36vp，图片采用最近邻缩放。
-原作者署名使用 ArkUI `Hyperlink` 打开上游 GitHub。
+难度选择参照 Dashboard 的系统分段按钮写法，使用 `TabSegmentButtonV2` / `SegmentButtonV2Items`，包括双向选择状态、点击回调与动画；控制器对重复选择进行保护。
+模式切换保留难度，难度切换保留模式；两者都重开，重复选择当前项保留局面。preferences 按两个模式 × 三档难度保存战绩，圆复数原有存档键保持不变。
+
+「关于」右上角关闭按钮的叉号居中，底部原作 `Hyperlink` 在全宽行中居中，并可打开上游 GitHub。
 
 音频与 2in1 状态栏配色在部分设备上缺少系统能力，现有实现会降级为静音或系统默认配色。
 这些构建提示与具体设备能力有关，需要结合目标设备验证。
@@ -79,6 +86,7 @@ node --experimental-strip-types scripts/atlas/make-icon.ts \
 ./scripts/ui-preview/run.sh
 ```
 
+切图脚本导出全部 116 个上游槽位，含 j 雷 / 旗、双曲数字和 LED j 单位。
 游戏贴图位于模块 `base/media`，WAV 位于 `rawfile/sounds`。
 应用与 Ability 分层图标分别写入 `AppScope` 和模块 media，两处均为 1024px 前景 / 背景，512px 原作图案居中、银灰底。
 启动窗口图标为 512px 透明 PNG；难度标签使用统一 128px 画布和 2× / 3× / 4× 图案。
@@ -115,7 +123,27 @@ node --experimental-strip-types scripts/atlas/make-icon.ts \
 ./scripts/engine-check/run.sh
 ```
 
-合并目录前的验证（2026-10-11）：引擎自检与 HAP 构建通过。当次未进行真机交互验收；构建仍有原有的音频 / 2in1 系统能力警告。
+2026-10-12，1.1.0 验证：引擎通过各 360 局两种模式、39 个双曲显示值、178,200 次展开判据检查及固定种子回归；Release HAP 编译通过。
+
+华为 Mate 70 Pro+（PLA-AL10）安装本机开发签名主 HAP 与测试 HAP 后，5 项 Hypium / UiTest 全部通过（0 失败、0 错误）：模式 / 难度切换、长按旗子保护与循环、计雷器与重开、连续切难度、关于关闭按钮和署名居中。
+测试源码为 `entry/src/ohosTest/ets/test/Ability.test.ets`，使用组件标识、无障碍描述和空闲等待。
+
+```bash
+# 构建设备测试 HAP；需先配置本机签名
+"$DEVECO_HOME/Contents/tools/node/bin/node" \
+  "$DEVECO_HOME/Contents/tools/hvigor/bin/hvigorw.js" \
+  --mode module -p product=default -p module=entry@ohosTest \
+  -p buildMode=release assembleHap --no-daemon
+
+hdc install entry/build/default/outputs/default/entry-default-signed.hap
+hdc install entry/build/default/outputs/ohosTest/entry-ohosTest-signed.hap
+hdc shell aa test -b top.rayawa.complexsweeper -m entry_test \
+  -s unittest OpenHarmonyTestRunner -s timeout 180000 -w 240
+```
+
+以输出中的 `OHOS_REPORT_RESULT` 判断测试结果，不能只看 shell 返回码。
+构建保留原有音频 / 2in1 系统能力警告。真机测试后已恢复不含本机签名的可移植工程配置。
+完整同步记录见 [MODE_SYNC.md](../docs/MODE_SYNC.md)。
 
 ## 三端同步与维护
 

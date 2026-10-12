@@ -1,4 +1,4 @@
-import { ACHIEVABLE } from '../model/Complex';
+import { ACHIEVABLE, HYPER_ACHIEVABLE, MODE_COMPLEX, MODE_HYPER } from '../model/Complex';
 
 /**
  * 贴图查表。
@@ -12,8 +12,11 @@ import { ACHIEVABLE } from '../model/Complex';
  * GPL-3.0 的授权范围内，只适合个人学习用途。详见 README。
  */
 
-/** 数字贴图：下标是 a²+b²（0…64），只有 ACHIEVABLE 里那 24 个有图 */
-export function numSprite(clue: number): Resource {
+/** 数字贴图：按模式查询24个圆复数值或39个双曲有符号值 */
+export function numSprite(clue: number, mode: number = MODE_COMPLEX): Resource {
+  if (mode === MODE_HYPER) {
+    return hyperNumSprite(clue);
+  }
   switch (clue) {
     case 0:
       return $r('app.media.cw_num_0');
@@ -67,12 +70,15 @@ export function numSprite(clue: number): Resource {
 }
 
 /** 数字贴图是否存在。不存在的值只能画成空白。 */
-export function hasNumSprite(clue: number): boolean {
-  return ACHIEVABLE.indexOf(clue) >= 0;
+export function hasNumSprite(clue: number, mode: number = MODE_COMPLEX): boolean {
+  return (mode === MODE_HYPER ? HYPER_ACHIEVABLE : ACHIEVABLE).indexOf(clue) >= 0;
 }
 
 /** 插着的旗，按玩家插的那一型取图（1=+1 2=-1 3=+i 4=-i） */
-export function flagSprite(t: number): Resource {
+export function flagSprite(t: number, mode: number = MODE_COMPLEX): Resource {
+  if (mode === MODE_HYPER && (t === 3 || t === 4)) {
+    return t === 3 ? $r('app.media.cw_hflag_3') : $r('app.media.cw_hflag_4');
+  }
   switch (t) {
     case 1:
       return $r('app.media.cw_flag_1');
@@ -86,7 +92,10 @@ export function flagSprite(t: number): Resource {
 }
 
 /** 亮出来的雷，按真实雷型取图 */
-export function mineSprite(t: number): Resource {
+export function mineSprite(t: number, mode: number = MODE_COMPLEX): Resource {
+  if (mode === MODE_HYPER && (t === 3 || t === 4)) {
+    return t === 3 ? $r('app.media.cw_hmine_3') : $r('app.media.cw_hmine_4');
+  }
   switch (t) {
     case 1:
       return $r('app.media.cw_mine_1');
@@ -100,7 +109,10 @@ export function mineSprite(t: number): Resource {
 }
 
 /** 踩中的那一颗，同色雷 + 红底 */
-export function boomSprite(t: number): Resource {
+export function boomSprite(t: number, mode: number = MODE_COMPLEX): Resource {
+  if (mode === MODE_HYPER && (t === 3 || t === 4)) {
+    return t === 3 ? $r('app.media.cw_hboom_3') : $r('app.media.cw_hboom_4');
+  }
   switch (t) {
     case 1:
       return $r('app.media.cw_boom_1');
@@ -114,7 +126,10 @@ export function boomSprite(t: number): Resource {
 }
 
 /** 结算：插对的旗（插在雷上），按玩家插的那型出图，旗上画绿勾 */
-export function rightFlagSprite(t: number): Resource {
+export function rightFlagSprite(t: number, mode: number = MODE_COMPLEX): Resource {
+  if (mode === MODE_HYPER && (t === 3 || t === 4)) {
+    return t === 3 ? $r('app.media.cw_hrightflag_3') : $r('app.media.cw_hrightflag_4');
+  }
   switch (t) {
     case 1:
       return $r('app.media.cw_rightflag_1');
@@ -185,7 +200,54 @@ export function ledSprite(cell: number): Resource {
       return $r('app.media.cw_led_minus');
     case 11:
       return $r('app.media.cw_led_i');
+    case 13:
+      return $r('app.media.cw_led_j');
     default:
       return $r('app.media.cw_led_blank');
+  }
+}
+
+function hyperNumSprite(clue: number): Resource {
+  switch (clue) {
+    case -64: return $r('app.media.cw_hnum_64_i');
+    case -49: return $r('app.media.cw_hnum_49_i');
+    case -48: return $r('app.media.cw_hnum_48_i');
+    case -36: return $r('app.media.cw_hnum_36_i');
+    case -35: return $r('app.media.cw_hnum_35_i');
+    case -32: return $r('app.media.cw_hnum_32_i');
+    case -25: return $r('app.media.cw_hnum_25_i');
+    case -24: return $r('app.media.cw_hnum_24_i');
+    case -21: return $r('app.media.cw_hnum_21_i');
+    case -16: return $r('app.media.cw_hnum_16_i');
+    case -15: return $r('app.media.cw_hnum_15_i');
+    case -12: return $r('app.media.cw_hnum_12_i');
+    case -9: return $r('app.media.cw_hnum_9_i');
+    case -8: return $r('app.media.cw_hnum_8_i');
+    case -7: return $r('app.media.cw_hnum_7_i');
+    case -5: return $r('app.media.cw_hnum_5_i');
+    case -4: return $r('app.media.cw_hnum_4_i');
+    case -3: return $r('app.media.cw_hnum_3_i');
+    case -1: return $r('app.media.cw_hnum_1_i');
+    case 0: return $r('app.media.cw_num_0');
+    case 1: return $r('app.media.cw_num_1');
+    case 3: return $r('app.media.cw_hnum_3');
+    case 4: return $r('app.media.cw_num_4');
+    case 5: return $r('app.media.cw_num_5');
+    case 7: return $r('app.media.cw_hnum_7');
+    case 8: return $r('app.media.cw_num_8');
+    case 9: return $r('app.media.cw_num_9');
+    case 12: return $r('app.media.cw_hnum_12');
+    case 15: return $r('app.media.cw_hnum_15');
+    case 16: return $r('app.media.cw_num_16');
+    case 21: return $r('app.media.cw_hnum_21');
+    case 24: return $r('app.media.cw_hnum_24');
+    case 25: return $r('app.media.cw_num_25');
+    case 32: return $r('app.media.cw_num_32');
+    case 35: return $r('app.media.cw_hnum_35');
+    case 36: return $r('app.media.cw_num_36');
+    case 48: return $r('app.media.cw_hnum_48');
+    case 49: return $r('app.media.cw_num_49');
+    case 64: return $r('app.media.cw_num_64');
+    default: return $r('app.media.cw_blank');
   }
 }

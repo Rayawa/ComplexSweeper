@@ -25,11 +25,12 @@ fun LedReadout(
     value: Int,
     slots: Int = 4,
     imagUnit: Boolean = false,
+    hyperUnit: Boolean = false,
     cellWidth: Dp = 13.dp,
     blankAll: Boolean = false,
 ) {
-    val codes = remember(value, slots, imagUnit, blankAll) {
-        ledCodes(value, slots, imagUnit, blankAll)
+    val codes = remember(value, slots, imagUnit, hyperUnit, blankAll) {
+        ledCodes(value, slots, imagUnit, blankAll).map { if (hyperUnit && it == CELL_UNIT_I) 13 else it }
     }
     val cellHeight = cellWidth * 23f / 13f
     Row(

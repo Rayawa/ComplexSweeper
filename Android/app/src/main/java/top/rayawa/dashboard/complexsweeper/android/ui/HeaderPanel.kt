@@ -13,7 +13,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
-import top.rayawa.dashboard.complexsweeper.android.model.TYPE_LABELS
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -33,16 +32,17 @@ private fun CounterRow(game: GameController, type: Int, ledCell: Dp, iconSize: D
         modifier = Modifier.padding(horizontal = 2.dp)
             .testTag("counter-$type")
             .semantics(mergeDescendants = true) {
-                contentDescription = "${TYPE_LABELS[type]} 剩余雷数"
+                contentDescription = "${game.mode.typeLabels[type]} 剩余雷数"
                 stateDescription = if (game.board.isStarted()) counterValue(game, type).toString() else "开局后公布"
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PixelImage(Sprites.flag(type + 1), iconSize, iconSize)
+        PixelImage(Sprites.flag(type + 1, game.mode), iconSize, iconSize)
         LedReadout(
             value = counterValue(game, type),
             slots = 4,
             imagUnit = type >= 2,
+            hyperUnit = game.mode.unit == "j",
             cellWidth = ledCell,
             blankAll = !game.board.isStarted(),
         )

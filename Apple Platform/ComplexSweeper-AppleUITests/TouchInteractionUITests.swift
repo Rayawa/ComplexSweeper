@@ -115,7 +115,7 @@ final class TouchInteractionUITests: XCTestCase {
     /// 横向拖动高级棋盘只滚动，不能插旗或开局；重开恢复初始滚动位置。
     func testAdvancedBoardDragAndRestart() {
         XCTAssertTrue(board.waitForExistence(timeout: 15))
-        app.staticTexts["高级"].tap()
+        app.segmentedControls.buttons["高级"].tap()
         let first = cell(0, 0)
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         let originalX = first.frame.minX
@@ -190,7 +190,7 @@ final class TouchInteractionUITests: XCTestCase {
 
         for round in 0..<4 {
             for label in ["高级", "初级", "中级", "高级", "初级"] {
-                let tab = app.staticTexts[label]
+                let tab = app.segmentedControls.buttons[label]
                 XCTAssertTrue(tab.waitForExistence(timeout: 5), "第 \(round) 轮找不到难度标签 \(label)")
                 tab.tap()
                 XCTAssertEqual(app.state, .runningForeground, "切到 \(label) 之后 App 不在了")
@@ -214,5 +214,34 @@ final class TouchInteractionUITests: XCTestCase {
                 "关于弹层没关掉"
             )
         }
+    }
+
+    func testModeTabsAndSeparateDifficultySelector() {
+        XCTAssertTrue(board.waitForExistence(timeout: 15))
+        app.segmentedControls.buttons["中级"].tap()
+        let hyper=app.buttons["mode-1"]
+        hyper.tap()
+        let target=cell(0,0)
+        target.tap(); target.tap(); target.tap()
+        XCTAssertEqual(target.value as? String,"旗帜 +j")
+        hyper.tap()
+        XCTAssertEqual(target.value as? String,"旗帜 +j")
+        app.segmentedControls.buttons["中级"].tap()
+        XCTAssertEqual(target.value as? String,"旗帜 +j")
+        app.descendants(matching:.any).matching(identifier:"restart").firstMatch.tap()
+        target.tap(); target.tap(); target.tap()
+        XCTAssertEqual(target.value as? String,"旗帜 +j")
+        app.segmentedControls.buttons["初级"].tap()
+        XCTAssertEqual(target.value as? String,"未翻开")
+        XCTAssertTrue(readyStatus.exists)
+        let counter=app.descendants(matching:.any).matching(identifier:"counter-2").firstMatch
+        XCTAssertEqual(counter.label,"+j 剩余雷数")
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "hyper-mode"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["mode-0"].tap()
+        XCTAssertEqual(counter.label,"+i 剩余雷数")
+        XCTAssertTrue(readyStatus.exists)
     }
 }

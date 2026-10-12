@@ -6,7 +6,7 @@ import { feedbackTick } from '../view/Feedback';
 const TYPE_INDEXES: number[] = [0, 1, 2, 3];
 
 /** 「关于」底部展示的版本号，与应用配置 app.json5 的 versionName 保持一致 */
-const APP_VERSION: string = '1.0.1';
+const APP_VERSION: string = '1.1.0';
 
 /**
  * 「关于」弹层的内容，装在标题栏那个 bindSheet 里。
@@ -108,20 +108,32 @@ export struct TutorialContent {
       Column() {
         this.AppHeader()
 
+        this.SectionTitle('两种模式')
+        this.Body('底部切换圆复数与闵可夫斯基模式，上方选择难度。切换模式或难度会重开，重复选择保留当前局。两种模式分别保存纪录。')
+
+        this.SectionTitle('圆复数模式 · i² = −1')
+        this.Body('四种雷为 +1、−1、+i、−i。邻域和为 a+bi 时，显示 √(a²+b²)。展开要求旗数等于真雷数，实虚数量比例相同或互为倒数。')
+
+        this.SectionTitle('闵可夫斯基模式 · j² = +1')
+        this.Body('四种雷为 +1、−1、+j、−j，分别为正负实雷（类空雷）和正负双曲虚雷（类时雷）。邻域和为 a+bj 时，显示 √(a²−b²)；负值显示为带 i 的根式，例如 −4 显示 2i。')
+
+        this.SectionTitle('新模式的展开与 0')
+        this.Body('展开要求旗数等于真雷数，且旗帜净和的 |a|、|b| 分别与真雷相等。不能交换实部与 j 部。显示 0 也可能来自 |a|=|b|，例如 +1 与 +j；只有周围完全无雷的空白格自动扩散。')
+
         this.SectionTitle('怎么玩')
         this.Body('格子上的数字，是周围所有雷之和的模长。翻开所有非雷格就赢。')
 
-        this.SectionTitle('四种雷')
+        this.SectionTitle('圆复数示例')
         this.Body('它们当复数相加，和再取模长就是格子上的数。比如周围有一颗 +1 和一颗 −i，'
           + '和是 1−i，显示 √2。')
         this.TypeRow()
 
         this.SectionTitle('空白和 0 不是一回事')
         this.Body('空白格：周围一颗雷都没有。')
-        this.Body('显示 0：周围有雷，但正负两两抵消了。')
+        this.Body('显示 0：周围有雷，但当前模式的模长为 0。')
 
         this.SectionTitle('操作')
-        this.Body('单击未翻开的格子：循环标记 空 → +1 → −1 → +i → −i → 空。')
+        this.Body('单击未翻开的格子：循环标记 空 → +1 → −1 → +i / +j → −i / −j → 空。')
         this.Body('长按未翻开的格子：翻开。插了旗的格子翻不开，得先把旗循环回空。')
         this.Body('单击已翻开的数字格：周围旗子插对时，一次掀开周围没插旗的格子。')
 
@@ -141,13 +153,17 @@ export struct TutorialContent {
           })
           .accessibilityText(`版本${APP_VERSION}`)
 
-        Hyperlink('https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game',
-          '原作 青月晓 · Complexweeper ↗')
-          .color('#005BB5')
-          .width('100%')
-          .padding({ bottom: 6 })
-          .id('original-repository')
-          .accessibilityText('原作 青月晓，打开原仓库 GitHub')
+        Row() {
+          Hyperlink('https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game',
+            '原作 青月晓 · Complexweeper ↗')
+            .color('#005BB5')
+            .id('original-repository')
+            .accessibilityText('原作 青月晓，打开原仓库 GitHub')
+        }
+        .id('original-repository-row')
+        .width('100%')
+        .justifyContent(FlexAlign.Center)
+        .padding({ bottom: 6 })
 
         Text('HarmonyOS 移植 Ray Chen (Rayawa)')
           .fontSize(12)
@@ -168,6 +184,7 @@ export struct TutorialContent {
       .alignItems(HorizontalAlign.Start)
       .padding({ left: 14, right: 14, bottom: 48 })
     }
+    .id('tutorial-scroll')
     .scrollBar(BarState.Auto)
     .width('100%')
     .height('100%')

@@ -12,8 +12,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
-import top.rayawa.dashboard.complexsweeper.android.model.TYPE_LABELS
-import top.rayawa.dashboard.complexsweeper.android.model.formatModulus
+import top.rayawa.dashboard.complexsweeper.android.model.GameMode
+import top.rayawa.dashboard.complexsweeper.android.model.formatClue
 import androidx.compose.ui.unit.Dp
 import top.rayawa.dashboard.complexsweeper.android.engine.Cell
 import top.rayawa.dashboard.complexsweeper.android.engine.MARK_MINE
@@ -41,14 +41,14 @@ fun CellView(game: GameController, cell: Cell, edge: Dp) {
     }
     CompositionLocalProvider(LocalViewConfiguration provides configuration) {
         PixelImage(
-            id = cellSprite(cell),
+            id = cellSprite(cell, game.mode),
             width = edge,
             height = edge,
             modifier = Modifier
                 .testTag("cell-${cell.row}-${cell.col}")
                 .semantics {
                     contentDescription = "第 ${cell.row + 1} 行，第 ${cell.col + 1} 列"
-                    stateDescription = cellDescription(cell)
+                    stateDescription = cellDescription(cell, game.mode)
                 }
                 .pointerInput(cell) {
                     detectTapGestures(
@@ -75,42 +75,42 @@ fun CellView(game: GameController, cell: Cell, edge: Dp) {
  *
  * 读的都是 Cell 上的 Compose 状态，所以哪几个字段变了就只重画这一格。
  */
-private fun cellSprite(cell: Cell): Int {
+private fun cellSprite(cell: Cell, mode: GameMode): Int {
     if (cell.isOpen) {
         if (cell.mineKind >= 0) {
             // 踩中的那颗底色是红的，其余的雷只是亮出来
             val kind = cell.mineKind + 1
-            return if (cell.exploded) Sprites.boom(kind) else Sprites.mine(kind)
+            return if (cell.exploded) Sprites.boom(kind, mode) else Sprites.mine(kind, mode)
         }
         // 空白格（邻域一颗雷都没有）和显示 0（周围全是抵消对）是两回事，
         // 贴图也不同：前者是没字的平板，后者画着 "0"。
         if (cell.isBlank) {
             return Sprites.BLANK
         }
-        return if (Sprites.hasNum(cell.clue)) Sprites.num(cell.clue) else Sprites.BLANK
+        return if (Sprites.hasNum(cell.clue, mode)) Sprites.num(cell.clue, mode) else Sprites.BLANK
     }
 
     when (cell.endMark) {
         MARK_WRONG_BLANK -> return Sprites.WRONG_BLANK
         // 按玩家自己插的那型出图：结算只看位置，不评判雷型对不对得上
-        MARK_RIGHT_FLAG -> return Sprites.rightFlag(cell.flag)
-        MARK_MINE -> return Sprites.mine(cell.mineKind + 1)
+        MARK_RIGHT_FLAG -> return Sprites.rightFlag(cell.flag, mode)
+        MARK_MINE -> return Sprites.mine(cell.mineKind + 1, mode)
     }
     if (cell.flag > 0) {
-        return Sprites.flag(cell.flag)
+        return Sprites.flag(cell.flag, mode)
     }
     return Sprites.CLOSED
 }
 
-private fun cellDescription(cell: Cell): String {
+private fun cellDescription(cell: Cell, mode: GameMode): String {
     if (cell.isOpen) {
         if (cell.isMine) return if (cell.exploded) "踩中的雷" else "雷"
-        return if (cell.isBlank) "空白" else "数字 ${formatModulus(cell.clue)}"
+        return if (cell.isBlank) "空白" else "数字 ${formatClue(cell.clue)}"
     }
     return when (cell.endMark) {
         MARK_WRONG_BLANK -> "标错的位置"
         MARK_RIGHT_FLAG -> "标对的位置"
         MARK_MINE -> "雷"
-        else -> if (cell.flag > 0) "旗帜 ${TYPE_LABELS[cell.flag - 1]}" else "未翻开"
+        else -> if (cell.flag > 0) "旗帜 ${mode.typeLabels[cell.flag - 1]}" else "未翻开"
     }
 }

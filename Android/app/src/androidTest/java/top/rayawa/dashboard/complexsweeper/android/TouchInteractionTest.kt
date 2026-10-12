@@ -92,4 +92,24 @@ class TouchInteractionTest {
         }
         compose.runOnIdle { assertEquals(81, game.board.cells.size) }
     }
+
+    @Test fun modeTabsKeepDifficultyAndRepeatedSelectionsKeepBoard() {
+        compose.onNodeWithTag("difficulty-1").performTouchInput { click() }
+        compose.onNodeWithTag("mode-1").performTouchInput { click() }
+        lateinit var original: top.rayawa.dashboard.complexsweeper.android.engine.Board
+        compose.runOnIdle {
+            original=game.board
+            assertEquals(16,original.w)
+            assertEquals(top.rayawa.dashboard.complexsweeper.android.model.GameMode.HYPER,original.mode)
+        }
+        repeat(3) {compose.onNodeWithTag("cell-0-0").performTouchInput { click() }}
+        compose.onNodeWithTag("mode-1").performTouchInput { click() }
+        compose.onNodeWithTag("difficulty-1").performTouchInput { click() }
+        compose.runOnIdle {assertSame(original,game.board);assertEquals(3,game.board.cellAt(0,0).flag)}
+        compose.onNodeWithTag("mode-0").performTouchInput { click() }
+        compose.runOnIdle {
+            assertEquals(16,game.board.w);assertEquals(0,game.board.flagsTotal())
+            assertFalse(game.board.isStarted())
+        }
+    }
 }

@@ -343,3 +343,53 @@ for (const d of DIFFICULTIES) {
   }
   console.log('✓ 6 个固定种子的棋盘指纹与 Swift / Kotlin 逐位一致');
 }
+
+// 新模式：独立枚举符号等价关系，验证实际棋盘与展开实现。
+{
+  const combos: number[][] = [];
+  const values = new Set<number>();
+  for (let p=0;p<=8;p++) for(let n=0;n<=8-p;n++)
+    for(let j=0;j<=8-p-n;j++) for(let k=0;k<=8-p-n-j;k++) {
+      combos.push([p,n,j,k]); values.add((p-n)**2-(j-k)**2);
+    }
+  if (combos.length !== 495 || [...values].sort((a,b)=>a-b).join() !== HYPER_ACHIEVABLE.join()) throw Error('39 个双曲显示值覆盖不全');
+  if(formatClue(-1)!=='i'||formatClue(-12)!=='2√3i'||formatClue(0)!=='0') throw Error('负显示值格式错误');
+  let checks=0, negative=0, lightlike=0;
+  for(const d of DIFFICULTIES) for(let seed=1;seed<=120;seed++) {
+    const b: any = new Board(d.w,d.h,d.mines,seed,MODE_HYPER);
+    b.startAt(Math.floor(d.h/2),Math.floor(d.w/2));
+    for(let i=0;i<b.cells.length;i++) {
+      const c=b.cells[i]; if(c.mineKind>=0) continue;
+      let a=0,j=0,count=0;
+      for(const n of neighborsOf(b,i)) if(b.cells[n].mineKind>=0) {
+        const t=TYPES[b.cells[n].mineKind]; a+=t[0];j+=t[1];count++;
+      }
+      if(c.clue !== a*a-j*j || c.nbrMines!==count || !values.has(c.clue)) throw Error('双曲整数显示值不一致');
+      if(c.clue<0) negative++;
+      if(c.clue===0 && count>0) {lightlike++;if(c.isBlank())throw Error('光锥零被当成空白');}
+    }
+    const center=b.cells.findIndex((c: any,i: number)=>c.mineKind<0 && c.nbrMines>0 && neighborsOf(b,i).length===8);
+    if(center<0) throw Error('测试邻域缺失');
+    const ns=neighborsOf(b,center);let ta=0,tb=0,nt=0;
+    for(const n of ns) if(b.cells[n].mineKind>=0) {const t=TYPES[b.cells[n].mineKind];ta+=t[0];tb+=t[1];nt++;}
+    for(const cc of combos) {
+      const flags=cc.flatMap((n: number,t: number)=>Array(n).fill(t+1));
+      for(let i=0;i<8;i++)b.cells[ns[i]].flag=flags[i]??0;
+      const fa=cc[0]-cc[1],fb=cc[2]-cc[3];
+      const expected=flags.length===nt && [[ta,tb],[-ta,tb],[ta,-tb],[-ta,-tb]].some(([a,j])=>a===fa&&j===fb);
+      if(b.matchComboTruth(center)!==expected) throw Error('双曲展开错误');checks++;
+    }
+  }
+  if(negative===0||lightlike===0)throw Error('未覆盖负值或非空白零');
+  console.log(`✓ 双曲 360 局、39 显示值、${checks} 次展开判据、负值与非空白零`);
+  const cases = [[9, 9, 10, 1, 4, 4, "1a6bf9f4"], [16, 16, 40, 8, 8, 8, "4759fc78"], [30, 16, 99, 5, 8, 15, "37233296"], [9, 9, 10, 2024, 0, 0, "a0ef92af"], [16, 16, 40, 31337, 15, 15, "7b20fba3"], [30, 16, 99, 123456, 0, 29, "8de13a32"]];
+  for(const [w,h,m,s,r,c,expected] of cases) {
+    const b=new Board(w,h,m,s,MODE_HYPER);b.startAt(r,c);
+    const parts=b.cells.map(c=>`${c.mineKind+1},${c.clue},${c.nbrMines},${c.open?1:0}`);
+    for(let t=0;t<4;t++)parts.push(`T${b.typeTotal[t]},${b.unmarked(t)}`);
+    parts.push(`over${b.isOver()}won${b.isWon()}`);let hash=0x811c9dc5;
+    for(const ch of parts.join(';'))hash=Math.imul(hash^ch.charCodeAt(0),0x01000193)>>>0;
+    if(hash.toString(16).padStart(8,'0')!==expected)throw Error('双曲固定种子指纹错误');
+  }
+  console.log('✓ 双曲 6 组参考指纹通过');
+}

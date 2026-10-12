@@ -3,7 +3,7 @@ import Foundation
 /// 复数扫雷的数学。
 ///
 /// 棋盘上每个非雷格显示的是「周围八格地雷复数之和的模长」，但真正存下来的
-/// 是那个和的模长平方 a²+b² —— 它恒为非负整数，可以精确比较、可以直接当
+/// 是整数显示值：圆复数 a²+b²，双曲 a²−b²（可以为负），可以精确比较、可以直接当
 /// 贴图名查表，全程不碰浮点。只有需要写出人类可读的式子时才开方。
 
 /// 四种雷：(实部, 虚部)。下标 0..3 依次是 +1、-1、+i、-i。
@@ -57,4 +57,15 @@ func formatModulus(_ normSquared: Int) -> String {
         return "√\(inside)"
     }
     return "\(outside)√\(inside)"
+}
+
+enum GameMode: Int, CaseIterable {
+    case complex = 0, hyper = 1
+    var label: String { self == .complex ? "圆复数" : "闵可夫斯基" }
+    var unit: String { self == .complex ? "i" : "j" }
+    var typeLabels: [String] { ["+1", "-1", "+\(unit)", "-\(unit)"] }
+}
+let kHyperAchievable: [Int] = [-64, -49, -48, -36, -35, -32, -25, -24, -21, -16, -15, -12, -9, -8, -7, -5, -4, -3, -1, 0, 1, 3, 4, 5, 7, 8, 9, 12, 15, 16, 21, 24, 25, 32, 35, 36, 48, 49, 64]
+func formatClue(_ clue: Int) -> String {
+    clue < 0 ? (clue == -1 ? "" : formatModulus(-clue)) + "i" : formatModulus(clue)
 }

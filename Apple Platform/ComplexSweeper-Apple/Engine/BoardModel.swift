@@ -57,7 +57,7 @@ final class Cell {
     let col: Int
     /// -1 表示不是雷；0..3 是 kMineTypes 的下标，代表 +1 / -1 / +i / -i
     var mineKind: Int = -1
-    /// 邻域地雷复数之和的模长平方 a²+b²，只在非雷格上有意义
+    /// 邻域显示值：圆复数 a²+b²，双曲 a²−b²；负值有效，雷格由 mineKind 区分
     var clue: Int = -1
     /// 邻域里的真实雷数。非雷格上它等于 0 才叫「空白格」
     var nbrMines: Int = 0

@@ -31,6 +31,8 @@ let MAX_SECONDS: Int = 9999
 @Observable
 final class GameController {
     private(set) var board: Board
+    private(set) var mode: GameMode = .complex
+    private var statsIndex: Int { mode.rawValue * kDifficulties.count + difficultyIndex }
     private(set) var difficultyIndex: Int = 0
     private(set) var gameState: GameState = .ready
     private(set) var elapsed: Int = 0
@@ -59,7 +61,7 @@ final class GameController {
     init(difficultyIndex: Int = 0) {
         let d = kDifficulties[difficultyIndex]
         self.board = Board(w: d.w, h: d.h, mines: d.mines, seed: 1)
-        self.stats = StatsStore(slots: kDifficulties.count)
+        self.stats = StatsStore(slots: kDifficulties.count * GameMode.allCases.count)
         self.difficultyIndex = difficultyIndex
         syncBest()
     }
@@ -104,7 +106,7 @@ final class GameController {
     }
 
     private func syncBest() {
-        bestSeconds = stats.entry(difficultyIndex).bestSeconds
+        bestSeconds = stats.entry(statsIndex).bestSeconds
     }
 
     // ---------------- 局面控制 ----------------
@@ -118,7 +120,7 @@ final class GameController {
         difficultyIndex = index
         // 线性同余推进种子：每次开新局都是不同的棋盘，但种子可复现
         seed = Int(UInt32(truncatingIfNeeded: seed) &* 1664525 &+ 1013904223)
-        board = Board(w: d.w, h: d.h, mines: d.mines, seed: seed)
+        board = Board(w: d.w, h: d.h, mines: d.mines, seed: seed, mode: mode)
         gameState = .ready
         elapsed = 0
         newRecord = false
@@ -126,6 +128,12 @@ final class GameController {
         judgeHint = ""
         gameId += 1
         syncBest()
+    }
+
+    func selectMode(_ selected: GameMode) {
+        guard selected != mode else { return }
+        mode = selected
+        newGame(difficultyIndex)
     }
 
     /// 切换难度标签：换难度才重开
@@ -173,16 +181,16 @@ final class GameController {
             // 秒数下限取 1：bestSeconds 用 0 表示「还没有纪录」，
             // 真存进去一个 0 秒会把这条纪录变成「不存在」
             let seconds = elapsed > 0 ? elapsed : 1
-            let previous = stats.entry(difficultyIndex).bestSeconds
+            let previous = stats.entry(statsIndex).bestSeconds
             newRecord = previous == 0 || seconds < previous
-            stats.recordWin(difficultyIndex, seconds: seconds)
+            stats.recordWin(statsIndex, seconds: seconds)
             syncBest()
         } else {
             gameState = .lost
             // 踩雷音按踩中的那一颗的雷型播，四种雷声音不同
             let boom = board.boomIndex()
             sound.playMine(boom >= 0 ? board.cells[boom].mineKind : 0)
-            stats.recordLoss(difficultyIndex)
+            stats.recordLoss(statsIndex)
             syncBest()
         }
     }
@@ -247,10 +255,17 @@ final class GameController {
             return "踩雷了，用时 \(elapsed) 秒。绿勾标对，红叉标错"
         }
         if !board.isStarted() {
+            #if os(macOS)
+            return "左键翻开第一格，四种雷的数量开局后公布"
+            #else
             return "长按翻开第一格，四种雷的数量开局后公布"
+            #endif
         }
-        return bestSeconds > 0
-            ? "单击标记、长按翻开、点数字格可展开 【最佳 \(bestSeconds) 秒】"
-            : "单击标记、长按翻开、点数字格可展开"
+        #if os(macOS)
+        let actions = "左键翻开、右键标记或展开数字格"
+        #else
+        let actions = "单击标记、长按翻开、点数字格可展开"
+        #endif
+        return bestSeconds > 0 ? "\(actions) 【最佳 \(bestSeconds) 秒】" : actions
     }
 }

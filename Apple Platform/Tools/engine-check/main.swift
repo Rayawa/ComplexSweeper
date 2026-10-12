@@ -405,6 +405,73 @@ do {
 
 // ---------- 汇总 ----------
 
+
+// 新模式与独立符号等价关系的回归。
+do {
+    var combos: [[Int]] = [], values: Set<Int> = []
+    for p in 0...8 { for n in 0...(8-p) { for j in 0...(8-p-n) { for k in 0...(8-p-n-j) {
+        combos.append([p,n,j,k]); values.insert((p-n)*(p-n)-(j-k)*(j-k))
+    }}}}
+    check(combos.count == 495 && values.sorted() == kHyperAchievable, "双曲39个显示值覆盖")
+    check(formatClue(-1) == "i" && formatClue(-12) == "2√3i", "负显示值化简")
+    var checks=0, negative=0, lightlike=0
+    for d in kDifficulties { for seed in 1...120 {
+        let b=Board(w:d.w,h:d.h,mines:d.mines,seed:seed,mode:.hyper)
+        b.startAt(d.h/2,d.w/2)
+        for i in b.cells.indices where !b.cells[i].isMine {
+            let c=b.cells[i]; var a=0,j=0,count=0
+            for n in neighborsOf(b,i) where b.cells[n].isMine {
+                let t=kMineTypes[b.cells[n].mineKind];a+=t.re;j+=t.im;count+=1
+            }
+            check(c.clue == a*a-j*j && c.nbrMines == count && values.contains(c.clue), "双曲显示值错误")
+            if c.clue<0 {negative+=1}
+            if c.clue==0 && count>0 {lightlike+=1;check(!c.isBlank,"光锥零误当成空白")}
+        }
+        guard let center=b.cells.indices.first(where:{!b.cells[$0].isMine && b.cells[$0].nbrMines>0 && neighborsOf(b,$0).count==8}) else {fatalError("测试邻域缺失")}
+        let ns=neighborsOf(b,center);var ta=0,tb=0,nt=0
+        for n in ns where b.cells[n].isMine {let t=kMineTypes[b.cells[n].mineKind];ta+=t.re;tb+=t.im;nt+=1}
+        for cc in combos {
+            var flags:[Int]=[]
+            for t in 0..<4 {flags+=Array(repeating:t+1,count:cc[t])}
+            for i in 0..<8 {b.cells[ns[i]].flag=i<flags.count ? flags[i]:0}
+            let fa=cc[0]-cc[1],fb=cc[2]-cc[3]
+            let signs=[(ta,tb),(-ta,tb),(ta,-tb),(-ta,-tb)]
+            let expected=flags.count==nt && signs.contains(where:{$0.0==fa && $0.1==fb})
+            check(b.matchComboTruth(center)==expected,"双曲展开错误");checks+=1
+        }
+    }}
+    check(negative>0 && lightlike>0,"未覆盖负值与非空白零")
+    print("✓ 双曲360局、39显示值、\(checks)次展开判据、负值与非空白零")
+    let cases:[(Int,Int,Int,Int,Int,Int,String)] = [(9,9,10,1,4,4,"1a6bf9f4"),(16,16,40,8,8,8,"4759fc78"),(30,16,99,5,8,15,"37233296"),(9,9,10,2024,0,0,"a0ef92af"),(16,16,40,31337,15,15,"7b20fba3"),(30,16,99,123456,0,29,"8de13a32")]
+    for (w,h,m,s,r,c,expected) in cases {
+        let b=Board(w:w,h:h,mines:m,seed:s,mode:.hyper);b.startAt(r,c)
+        var parts=b.cells.map {"\($0.mineKind+1),\($0.clue),\($0.nbrMines),\($0.isOpen ? 1:0)"}
+        for t in 0..<4 {parts.append("T\(b.typeTotal[t]),\(b.unmarked(t))")}
+        parts.append("over\(b.isOver())won\(b.isWon())")
+        var hash:UInt32=0x811c9dc5
+        for byte in parts.joined(separator:";").utf8 {hash=(hash ^ UInt32(byte)) &* 0x01000193}
+        check(String(format:"%08x",hash)==expected,"双曲固定种子指纹错误")
+    }
+    print("✓ 双曲6组参考指纹通过")
+}
+
+
+do {
+    let domain = "ComplexSweeper-Regression-" + UUID().uuidString
+    let defaults = UserDefaults(suiteName: domain)!
+    defer { defaults.removePersistentDomain(forName: domain) }
+    defaults.set(19, forKey: "best_0")
+    defaults.set(4, forKey: "wins_0")
+    let store = StatsStore(slots: 6, defaults: defaults)
+    check(store.entry(0).bestSeconds == 19 && store.entry(0).wins == 4, "原有圆复数纪录不能丢失")
+    store.recordWin(3, seconds: 5)
+    store.recordLoss(4)
+    let reloaded = StatsStore(slots: 6, defaults: defaults)
+    check(reloaded.entry(0).bestSeconds == 19 && reloaded.entry(0).wins == 4, "双曲结算不能覆盖圆复数纪录")
+    check(reloaded.entry(3).bestSeconds == 5 && reloaded.entry(3).wins == 1 && reloaded.entry(4).losses == 1, "双曲战绩独立保存")
+    print("✓ 旧纪录兼容、双曲战绩隔离与重新读取")
+}
+
 if failed > 0 {
     FileHandle.standardError.write("引擎自检失败：\(failed) 项\n".data(using: .utf8)!)
     exit(1)

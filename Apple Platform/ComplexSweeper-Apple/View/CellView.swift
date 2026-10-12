@@ -69,13 +69,13 @@ struct CellView: View {
     private var accessibilityValue: String {
         if cell.isOpen {
             if cell.isMine { return cell.exploded ? "踩中的雷" : "雷" }
-            return cell.isBlank ? "空白" : "数字 \(formatModulus(cell.clue))"
+            return cell.isBlank ? "空白" : "数字 \(formatClue(cell.clue))"
         }
         switch cell.endMark {
         case MARK_WRONG_BLANK: return "标错的位置"
         case MARK_RIGHT_FLAG: return "标对的位置"
         case MARK_MINE: return "雷"
-        default: return cell.flag > 0 ? "旗帜 \(kTypeLabels[cell.flag - 1])" : "未翻开"
+        default: return cell.flag > 0 ? "旗帜 \(game.mode.typeLabels[cell.flag - 1])" : "未翻开"
         }
     }
 
@@ -85,14 +85,14 @@ struct CellView: View {
             if cell.mineKind >= 0 {
                 // 踩中的那颗底色是红的，其余的雷只是亮出来
                 let kind = cell.mineKind + 1
-                return cell.exploded ? Sprites.boom(kind) : Sprites.mine(kind)
+                return cell.exploded ? Sprites.boom(kind, mode: game.mode) : Sprites.mine(kind, mode: game.mode)
             }
             // 空白格（邻域一颗雷都没有）和显示 0（周围全是抵消对）是两回事，
             // 贴图也不同：前者是没字的平板，后者画着 "0"。
             if cell.isBlank {
                 return Sprites.blank
             }
-            return Sprites.hasNum(cell.clue) ? Sprites.num(cell.clue) : Sprites.blank
+            return Sprites.hasNum(cell.clue, mode: game.mode) ? Sprites.num(cell.clue, mode: game.mode) : Sprites.blank
         }
 
         switch cell.endMark {
@@ -100,14 +100,14 @@ struct CellView: View {
             return Sprites.wrongBlank
         case MARK_RIGHT_FLAG:
             // 按玩家自己插的那型出图：结算只看位置，不评判雷型对不对得上
-            return Sprites.rightFlag(cell.flag)
+            return Sprites.rightFlag(cell.flag, mode: game.mode)
         case MARK_MINE:
-            return Sprites.mine(cell.mineKind + 1)
+            return Sprites.mine(cell.mineKind + 1, mode: game.mode)
         default:
             break
         }
         if cell.flag > 0 {
-            return Sprites.flag(cell.flag)
+            return Sprites.flag(cell.flag, mode: game.mode)
         }
         return Sprites.closed
     }

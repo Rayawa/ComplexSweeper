@@ -10,19 +10,20 @@ struct CounterRow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            PixelImage(name: Sprites.flag(type + 1),
+            PixelImage(name: Sprites.flag(type + 1, mode: game.mode),
                        width: ClassicLayout.ledIcon(cellWidth: ledCell),
                        height: ClassicLayout.ledIcon(cellWidth: ledCell))
             LedReadout(value: counterValue,
                        slots: 4,
                        imagUnit: type >= 2,
+                       hyperUnit: game.mode == .hyper,
                        cellWidth: ledCell,
                        blankAll: !game.board.isStarted())
         }
         .padding(.horizontal, 2)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier("counter-\(type)")
-        .accessibilityLabel("\(kTypeLabels[type]) 剩余雷数")
+        .accessibilityLabel("\(game.mode.typeLabels[type]) 剩余雷数")
         .accessibilityValue(game.board.isStarted() ? "\(counterValue)" : "开局后公布")
     }
 

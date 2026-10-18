@@ -8,13 +8,24 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Bitmap, decodePng, encodePng } from './png.ts';
 
-function crop(src: Bitmap, x: number, y: number, w: number, h: number): Bitmap {
+function crop(src: Bitmap, x: number, y: number, w: number, h: number, icon: boolean = false): Bitmap {
   if (x < 0 || y < 0 || x + w > src.width || y + h > src.height) {
     throw new Error(`槽位越界：(${x},${y}) ${w}x${h} 超出 ${src.width}x${src.height}`);
   }
   const out = Buffer.alloc(w * h * 4);
   for (let row = 0; row < h; row++) {
     src.data.copy(out, row * w * 4, ((y + row) * src.width + x) * 4, ((y + row) * src.width + x + w) * 4);
+  }
+  // 与上游 gen_atlas.js 一致：使用作者的黑白图集，非图标透明处合成到银灰底。
+  if (prefix === 'cw_bw_') {
+    for (let i = 0; i < out.length; i += 4) {
+      const alpha = icon ? 1 : out[i + 3] / 255;
+      const r = Math.round(out[i] * alpha + 192 * (1 - alpha));
+      const g = Math.round(out[i + 1] * alpha + 192 * (1 - alpha));
+      const b = Math.round(out[i + 2] * alpha + 192 * (1 - alpha));
+      out[i] = out[i + 1] = out[i + 2] = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+      if (!icon) out[i + 3] = 255;
+    }
   }
   return new Bitmap(w, h, out);
 }
@@ -50,7 +61,7 @@ for (const slot of atlas.slots as Slot[]) {
   if (!/^[a-z][a-z0-9_]*$/.test(name)) {
     throw new Error(`资源名不合规（HarmonyOS 只接受小写字母、数字、下划线）：${name}`);
   }
-  fs.writeFileSync(path.join(outDir, `${name}.png`), encodePng(crop(src, slot.x, slot.y, slot.w, slot.h)));
+  fs.writeFileSync(path.join(outDir, `${name}.png`), encodePng(crop(src, slot.x, slot.y, slot.w, slot.h, slot.name === 'icon')));
   written++;
 }
 

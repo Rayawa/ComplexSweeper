@@ -1,3 +1,4 @@
+import { colorSprite } from './AppearanceSprites';
 import { TYPE_LABELS, HYPER_TYPE_LABELS, MODE_HYPER, formatClue } from '../model/Complex';
 import { Cell, MARK_MINE, MARK_RIGHT_FLAG, MARK_WRONG_BLANK } from '../engine/Board';
 import { hasNumSprite } from './Sprites';
@@ -21,6 +22,7 @@ import {
  */
 @Component
 export struct CellView {
+  @StorageLink('colorEnabled') colorEnabled: boolean = true;
   @ObjectLink cell: Cell;
   /**
    * 必须用 @Prop：格子边长在首帧之后还会变一次 —— 棋盘区域的实测宽度要等
@@ -89,7 +91,7 @@ export struct CellView {
   }
 
   build() {
-    Image(this.sprite())
+    Image(colorSprite(this.sprite(), this.colorEnabled))
       .id(`cell-${this.cell.row}-${this.cell.col}`)
       .accessibilityText(`第 ${this.cell.row + 1} 行，第 ${this.cell.col + 1} 列`)
       .accessibilityDescription(this.description())

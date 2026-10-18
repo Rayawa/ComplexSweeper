@@ -124,25 +124,33 @@ if (blankCells === 0 || cancellingZeros === 0) {
   console.log(`✓ 首击连片展开了 ${opened} 格，全是安全格`);
 }
 
-// ---------- 4. 旗子保护格子 ----------
-{
-  const b = freshBoard(9, 9, 10, 99, 4, 4);
-  let target = -1;
-  for (let i = 0; i < b.cells.length; i++) {
-    if (!b.cells[i].open && b.cells[i].mineKind < 0) { target = i; break; }
+// ---------- 4. 主动翻开清旗，其他旗仍受连片保护 ----------
+for (const mode of [MODE_COMPLEX, MODE_HYPER]) {
+  for (let flag = 1; flag <= 4; flag++) {
+    const first = new Board(9, 9, 10, 99, mode);
+    for (let k = 0; k < flag; k++) first.cycleFlag(4, 4);
+    first.cycleFlag(4, 5);
+    if (first.reveal(4, 4) !== ACT_OK || !first.isStarted() || !first.cellAt(4, 4).open || first.cellAt(4, 4).flag !== 0) throw new Error('带旗首击必须清旗并安全开局');
+    if (first.cellAt(4, 5).open || first.cellAt(4, 5).flag !== 1 || first.flagsTotal() !== 1) throw new Error('连片不能清除其他旗');
+    for (let t = 0; t < 4; t++) if (first.unmarked(t) !== first.typeTotal[t] - (t === 0 ? 1 : 0)) throw new Error('首击计雷器不正确');
+    for (const mine of [false, true]) {
+      const b = new Board(9, 9, 10, 99, mode);
+      b.startAt(4, 4);
+      const target = b.cells.find(c => !c.open && (c.mineKind >= 0) === mine)!;
+      for (let k = 0; k < flag; k++) b.cycleFlag(target.row, target.col);
+      if (b.reveal(target.row, target.col) !== (mine ? ACT_BOOM : ACT_OK)) throw new Error('清旗后必须按真实雷型翻开');
+      if (!target.open || target.flag !== 0 || b.flagsTotal() !== 0) throw new Error('翻开后必须清除标记');
+      for (let t = 0; t < 4; t++) if (b.unmarked(t) !== b.typeTotal[t]) throw new Error('清旗后计雷器未恢复');
+      if (mine) {
+        if (!b.isOver() || b.isWon() || !target.exploded) throw new Error('带旗雷必须正常结算失败');
+        const other = b.cells.find(c => !c.open)!;
+        const before = other.flag;
+        if (b.reveal(other.row, other.col) !== ACT_IGNORED || other.flag !== before) throw new Error('结算后不能清旗或翻开');
+      }
+    }
   }
-  const r = Math.floor(target / b.w), c = target % b.w;
-  b.cycleFlag(r, c);
-  if (b.cells[target].flag !== 1) throw new Error('插旗失败');
-  const act = b.reveal(r, c);
-  if (act !== ACT_IGNORED) throw new Error('插了旗的格子居然被翻开了');
-  if (b.cells[target].open) throw new Error('插了旗的格子还是被翻开了');
-  // 循环一圈回到空
-  for (let k = 0; k < 4; k++) b.cycleFlag(r, c);
-  if (b.cells[target].flag !== 0) throw new Error('旗子循环没有回到空');
-  if (b.unmarked(0) !== b.typeTotal[0]) throw new Error('清旗后计数没还原');
-  console.log('✓ 旗子保护格子；循环一圈 空 → +1 → -1 → +i → -i → 空');
 }
+console.log('✓ 两种模式×四种标记：首击清旗、安全格、踩雷、计数及其他旗保护');
 
 // ---------- 5. 展开判定 ----------
 {
@@ -197,7 +205,7 @@ if (blankCells === 0 || cancellingZeros === 0) {
   b.cycleFlag(Math.floor(wrongIdx / b.w), wrongIdx % b.w);
 
   // 手动触发失败结算：翻一颗没插旗的雷
-  // （插了旗的雷翻不开，那是旗子在保护格子，这里不能拿它当引信）
+  // （保留已有旗帜用于验证结算标记，另选未插旗的雷作为引信）
   let mineIdx = -1;
   for (let i = 0; i < b.cells.length; i++) {
     if (b.cells[i].mineKind >= 0 && !b.cells[i].open && b.cells[i].flag === 0) { mineIdx = i; break; }
@@ -303,9 +311,8 @@ for (const d of DIFFICULTIES) {
   b.cycleFlag(4, 4);
   b.startAt(4, 4);
   if (b.isStarted()) throw new Error('带旗首击不能布雷');
-  if (b.reveal(4, 4) !== ACT_IGNORED || b.isStarted()) throw new Error('带旗首击不能开局');
-  for (let i = 0; i < 4; i++) b.cycleFlag(4, 4);
-  if (b.reveal(4, 4) !== ACT_OK || !b.isStarted() || b.mineTotal() !== 10) throw new Error('撤旗后 reveal 应正常布雷开局');
+  if (b.reveal(4, 4) !== ACT_OK || !b.isStarted() || b.mineTotal() !== 10) throw new Error('带旗 reveal 应清旗并正常布雷开局');
+  if (b.cellAt(4, 4).flag !== 0 || b.flagsTotal() !== 0) throw new Error('首击必须归还旗数');
   const snapshot = JSON.stringify(b.cells);
   b.startAt(0, 0);
   if (snapshot !== JSON.stringify(b.cells)) throw new Error('重复 startAt 不能重布雷');
@@ -313,7 +320,7 @@ for (const d of DIFFICULTIES) {
     if (b.reveal(r, c) !== ACT_IGNORED || b.tryExpand(r, c) !== ACT_IGNORED || b.cycleFlag(r, c)) throw new Error('越界动作必须忽略');
     b.startAt(r, c);
   }
-  console.log('✓ 首击旗子保护、直接开局、重复开局与越界动作');
+  console.log('✓ 带旗直接开局、重复开局与越界动作');
 }
 {
   const b = new Board(3, 3, 0, 1);

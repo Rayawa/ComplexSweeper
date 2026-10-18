@@ -6,10 +6,26 @@ export default function abilityTest() {
     let driver: Driver = Driver.create();
     const settle = async (): Promise<void> => { await driver.waitForIdle(300, 5000); };
     const clickCell = async (row: number, col: number, long: boolean = false): Promise<void> => {
-      const center = await (await driver.findComponent(ON.id(`cell-${row}-${col}`))).getBoundsCenter();
-      if (long) { await driver.longClick(center.x, center.y); }
-      else { await driver.click(center.x, center.y); }
-      await settle();
+      // 模式切换会重建棋盘；UiTest 查询与读取坐标之间，旧组件可能失效。
+      // 只重试尚未注入触摸的坐标查询，避免把一次点击执行两遍。
+      for (let attempt: number = 0; attempt < 3; attempt++) {
+        await settle();
+        let x: number = 0;
+        let y: number = 0;
+        try {
+          const target = await driver.waitForComponent(ON.id(`cell-${row}-${col}`), 5000);
+          const center = await target.getBoundsCenter();
+          x = center.x;
+          y = center.y;
+        } catch (err) {
+          if (attempt === 2 || !String(err).includes('NoCandidates')) throw new Error(String(err));
+          continue;
+        }
+        if (long) { await driver.longClick(x, y); }
+        else { await driver.click(x, y); }
+        await settle();
+        return;
+      }
     };
     beforeAll(async () => {
       await abilityDelegatorRegistry.getAbilityDelegator().startAbility({
@@ -53,21 +69,26 @@ export default function abilityTest() {
       await driver.assertComponentExist(ON.id('cell-15-15'));
     });
 
-    it('longPressFlagProtectionAndFlagCycle', 0, async () => {
-      await (await driver.findComponent(ON.text('闵可夫斯基').clickable(true))).click();
-      await settle();
-      const expected: string[] = ['+1', '-1', '+j', '-j', '未翻开'];
-      for (const label of expected) {
-        await clickCell(0, 0, false);
-        expect(await (await driver.findComponent(ON.id('cell-0-0'))).getDescription()).assertContain(label);
-        if (label === '+1') {
+    it('longPressClearsFlagAndStartsGame', 0, async () => {
+      for (const mode of ['圆复数', '闵可夫斯基']) {
+        await (await driver.findComponent(ON.text(mode).clickable(true))).click();
+        await settle();
+        const expected: string[] = mode === '圆复数' ? ['+1', '-1', '+i', '-i', '未翻开'] : ['+1', '-1', '+j', '-j', '未翻开'];
+        for (const label of expected) {
+          await clickCell(0, 0);
+          expect(await (await driver.findComponent(ON.id('cell-0-0'))).getDescription()).assertContain(label);
+        }
+        for (let flag: number = 1; flag <= 4; flag++) {
+          await (await driver.findComponent(ON.id('restart'))).click();
+          await settle();
+          for (let k: number = 0; k < flag; k++) await clickCell(0, 0);
+          await clickCell(0, 1);
           await clickCell(0, 0, true);
-          expect(await (await driver.findComponent(ON.id('status'))).getText()).assertContain('长按翻开第一格');
+          expect(await (await driver.findComponent(ON.id('status'))).getText()).assertContain('单击标记');
+          expect(await (await driver.findComponent(ON.id('cell-0-0'))).getDescription()).assertContain('空白');
+          expect(await (await driver.findComponent(ON.id('cell-0-1'))).getDescription()).assertContain('旗帜 +1');
         }
       }
-      await clickCell(0, 0, true);
-      expect(await (await driver.findComponent(ON.id('status'))).getText()).assertContain('单击标记');
-      expect(await (await driver.findComponent(ON.id('cell-0-0'))).getDescription()).assertContain('空白');
     });
 
     it('counterRefreshAndTimerReset', 0, async () => {
@@ -100,8 +121,36 @@ export default function abilityTest() {
         }
       }
     });
+    it('appearanceSelectorStaysInTitleBar', 0, async () => {
+      const appearance = await (await driver.findComponent(ON.id('appearance'))).getBoundsCenter();
+      const about = await (await driver.findComponent(ON.id('about'))).getBoundsCenter();
+      const difficulty = await (await driver.findComponent(ON.id('difficulty-selector'))).getBoundsCenter();
+      expect(Math.abs(appearance.y - about.y) < 20).assertTrue();
+      expect(appearance.y < difficulty.y).assertTrue();
+    });
+
+    it('appearanceSwitchKeepsFlagsAndCounters', 0, async () => {
+      const original: string = await (await driver.findComponent(ON.id('appearance'))).getDescription();
+      const next: string = original === '彩色' ? '黑白' : '彩色';
+      await clickCell(0, 0);
+      await clickCell(4, 4, true);
+      const before: string = await (await driver.findComponent(ON.id('counter-0'))).getDescription();
+      await (await driver.findComponent(ON.text(next))).click();
+      await settle();
+      expect(await (await driver.findComponent(ON.id('appearance'))).getDescription()).assertEqual(next);
+      await (await driver.findComponent(ON.text(next))).click();
+      await settle();
+      expect(await (await driver.findComponent(ON.id('cell-0-0'))).getDescription()).assertContain('旗帜 +1');
+      expect(await (await driver.findComponent(ON.id('cell-4-4'))).getDescription()).assertContain('空白');
+      expect(await (await driver.findComponent(ON.id('status'))).getText()).assertContain('单击标记');
+      expect(await (await driver.findComponent(ON.id('counter-0'))).getDescription()).assertEqual(before);
+      await (await driver.findComponent(ON.text(original))).click();
+      await settle();
+      expect(await (await driver.findComponent(ON.id('appearance'))).getDescription()).assertEqual(original);
+    });
+
     it('aboutCloseAndCreditAlignment', 0, async () => {
-      await (await driver.findComponent(ON.type('Button').text('').clickable(true))).click();
+      await (await driver.findComponent(ON.id('about'))).click();
       await settle();
       const close = await (await driver.findComponent(ON.id('about-close'))).getBoundsCenter();
       const glyph = await (await driver.findComponent(ON.id('about-close-glyph'))).getBoundsCenter();

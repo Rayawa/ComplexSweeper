@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -66,6 +67,8 @@ fun Modifier.classicBevel(
     }
     .padding(inset)
 
+val LocalColorEnabled = staticCompositionLocalOf { true }
+
 /**
  * 像素贴图画笔缓存。
  *
@@ -104,7 +107,7 @@ private fun pixelPainter(@DrawableRes id: Int): BitmapPainter {
 @Composable
 fun PixelImage(@DrawableRes id: Int, width: Dp, height: Dp, modifier: Modifier = Modifier) {
     Image(
-        painter = pixelPainter(id),
+        painter = pixelPainter(if (LocalColorEnabled.current) id else monochromeSprite(id)),
         contentDescription = null,
         contentScale = ContentScale.FillBounds,
         modifier = modifier.size(width, height),

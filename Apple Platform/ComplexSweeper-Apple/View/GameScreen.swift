@@ -11,6 +11,7 @@ import AppKit
 struct GameScreen: View {
     @State private var game = GameController()
     @State private var showTutorial = false
+    @AppStorage("colorEnabled") private var colorEnabled = true
 
     var body: some View {
         content
@@ -22,7 +23,7 @@ struct GameScreen: View {
     @ViewBuilder
     private var content: some View {
         #if os(macOS)
-        // macOS：难度放进窗口工具栏的分段选择器，不占棋盘地方
+        // macOS：模式与两组分段选择器复用移动端布局
         mainColumn
             .frame(minWidth: 420, minHeight: 520)
             .background(MacWindowTitle().frame(width: 0, height: 0))
@@ -33,7 +34,6 @@ struct GameScreen: View {
                 } else {
                     ToolbarItem(placement: .principal) { AppTitle() }
                 }
-                ToolbarItem { MacToolbar(game: game) }
                 ToolbarItem(placement: .primaryAction) {
                     AboutButton { showTutorial = true }
                 }
@@ -54,12 +54,26 @@ struct GameScreen: View {
         #endif
     }
 
+    private var appearancePicker: some View {
+        Picker("外观", selection: $colorEnabled) {
+            Text("彩色").tag(true)
+            Text("黑白").tag(false)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 124)
+        .accessibilityIdentifier("appearance")
+    }
+
     private var mainColumn: some View {
         GeometryReader { geo in
             VStack(spacing: 0) {
-                #if os(iOS)
-                DifficultyBar(game: game)
-                #endif
+                HStack(spacing: 8) {
+                    DifficultyBar(game: game)
+                    appearancePicker
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
                 HeaderPanel(game: game, pageHeight: geo.size.height)
                 BoardPanel(game: game)
                 StatusLine(game: game)
@@ -83,8 +97,7 @@ struct DifficultyBar: View {
             }
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .labelsHidden()
         .accessibilityIdentifier("difficulty")
     }
 }
@@ -109,25 +122,6 @@ struct ModeBar: View {
         }
         .background(Classic.face)
         .overlay(alignment: .top) { Rectangle().fill(Classic.shadow).frame(height: 1) }
-    }
-}
-
-/// macOS 工具栏上的难度选择器
-struct MacToolbar: View {
-    let game: GameController
-
-    var body: some View {
-        Picker("难度", selection: Binding(
-            get: { game.difficultyIndex },
-            set: { game.selectDifficulty($0) }
-        )) {
-            ForEach(kDifficulties.indices, id: \.self) { i in
-                Text(kDifficulties[i].label).tag(i)
-            }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .frame(width: 220)
     }
 }
 

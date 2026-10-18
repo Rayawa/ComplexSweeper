@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.material3.Text
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
@@ -84,7 +86,7 @@ fun GameScreen(game: GameController) {
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
         ) {
-            TopBar(onAbout = { showTutorial = true })
+            TopBar(colorEnabled = game.colorEnabled, onColor = game::selectColor, onAbout = { showTutorial = true })
             DifficultyBar(game)
             HeaderPanel(game, pageHeight)
             BoardPanel(game, Modifier.weight(1f))
@@ -100,7 +102,7 @@ fun GameScreen(game: GameController) {
 
 /** 标题栏：应用名 + 关于。 */
 @Composable
-private fun TopBar(onAbout: () -> Unit) {
+private fun TopBar(colorEnabled: Boolean, onColor: (Boolean) -> Unit, onAbout: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -115,6 +117,22 @@ private fun TopBar(onAbout: () -> Unit) {
             color = Classic.Dark,
             modifier = Modifier.weight(1f),
         )
+        SingleChoiceSegmentedButtonRow(
+            Modifier.width(132.dp).testTag("appearance").semantics {
+                stateDescription = if (colorEnabled) "彩色" else "黑白"
+            }
+        ) {
+            for (index in 0..1) {
+                val enabled = index == 0
+                SegmentedButton(
+                    selected = colorEnabled == enabled,
+                    onClick = { onColor(enabled) },
+                    shape = SegmentedButtonDefaults.itemShape(index, 2),
+                    icon = {},
+                    modifier = Modifier.testTag(if (enabled) "appearance-color" else "appearance-mono"),
+                ) { Text(if (enabled) "彩色" else "黑白") }
+            }
+        }
         Row(
             modifier = Modifier
                 .pointerInput(Unit) { detectTapGestures { onAbout() } }

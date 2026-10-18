@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.sp
 import top.rayawa.dashboard.complexsweeper.android.model.TYPE_LABELS
 
 /** 「关于」底部展示的版本号，与 build.gradle.kts 的 versionName 保持一致 */
-const val APP_VERSION: String = "1.1.0"
+const val APP_VERSION: String = "1.2.0"
 
 /**
  * 「关于」弹层的内容。
@@ -90,7 +90,7 @@ fun TutorialContent(onClose: () -> Unit) {
 
             SectionTitle("操作")
             Body("单击未翻开的格子：循环标记 空 → +1 → −1 → +i / +j → −i / −j → 空。")
-            Body("长按未翻开的格子：翻开。插了旗的格子翻不开，得先把旗循环回空。")
+            Body("长按未翻开的格子：清除该格标记并翻开。首击安全，开局后翻到雷会失败；连片展开仍跳过其他标记格。")
             Body("单击已翻开的数字格：周围旗子插对时，一次掀开周围没插旗的格子。")
 
             ClassicDivider(Modifier.padding(top = 20.dp, bottom = 12.dp))

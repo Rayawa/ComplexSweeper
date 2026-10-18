@@ -103,7 +103,7 @@ class Cell(val row: Int, val col: Int) {
  *
  *   - 四种雷等概率随机撒（不是均分），撒完把各类型的真实总数公开给玩家；
  *   - 首击格连同八邻域保证无雷，开局必定连片展开；
- *   - 插了旗的格子翻不开，连片展开也绕开它 —— 旗子保护格子；
+ *   - 主动翻开会清除该格标记；连片展开与数字格展开仍绕开其他带旗格；
  *   - 数字格上可以「展开」：邻域旗数等于真实雷数、且实虚比例符合真实比例
  *     或其倒数时，一次性翻开周围所有未插旗的格子。这是用来试探抵消对的。
  *   - 翻开所有非雷格就赢。结算把雷全亮出来，旗只看位置标对错（不评判雷型）。
@@ -334,16 +334,19 @@ class Board(
     }
 
     /**
-     * 长按：翻开一格。插了旗的翻不开 —— 传统扫雷里旗子就是保护格子的，
-     * 要翻得先单击把旗循环回「空」。
+     * 主动翻开一格：先清除该格标记；连片展开仍跳过其他带旗格。
      */
     fun reveal(row: Int, col: Int): Int {
         if (!contains(row, col)) return ACT_IGNORED
         val idx = index(row, col)
         val cell = cells[idx]
         judgeFailed = false
-        if (over || cell.isOpen || cell.flag != 0) {
+        if (over || cell.isOpen) {
             return ACT_IGNORED
+        }
+        if (cell.flag != 0) {
+            flagsOf[cell.flag - 1]--
+            cell.flag = 0
         }
         if (!started) {
             startAt(row, col)

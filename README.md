@@ -14,7 +14,7 @@
 
 原作是[青月晓](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game)开发的
 [Complexweeper Windows 版](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game)，使用 Zig / Win32。
-本项目以原作 **v1.2.0** 为移植基准，由 **Ray Chen（Rayawa）**维护；先以鸿蒙版建立移动端实现，再对齐 Apple 和安卓版本。
+本项目已同步原作主分支 **`f6b80bb`（源码版本 1.3.0）**，由 **Ray Chen（Rayawa）**维护；先以鸿蒙版建立移动端实现，再对齐 Apple 和安卓版本。
 感谢原作者与上游贡献者提供游戏设计、圆复数的 24 个与双曲复数的 39 个可达显示值、展开判据、像素素材和六段音效。
 三端应用「关于」中的原作者署名均可点击打开原仓库。
 
@@ -23,11 +23,11 @@ Windows 原作通过上面的链接访问，不包含在本仓库的三个平台
 
 ## 下载与安装
 
-当前版本为 **1.1.0**，见 [v1.1.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.1.0) 与[发布说明](docs/releases/v1.1.0.md)。
+当前版本为 **1.2.0**，新增彩色／黑白分段切换及长按清旗翻开，见 [v1.2.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.2.0) 与[发布说明](docs/releases/v1.2.0.md)。
 
-- Android：下载 `ComplexSweeper-v1.1.0-android.apk`，使用与首版一致的开发测试证书签名，可直接安装。
-- macOS：下载 `ComplexSweeper-v1.1.0-macos.zip`，解压为 `复扫雷.app`，支持 Apple Silicon 与 Intel；未配置 Developer ID 分发签名或公证。
-- HarmonyOS：下载 `ComplexSweeper-v1.1.0-harmonyos-unsigned.hap`，需使用自己的证书与描述文件签名后安装。
+- Android：下载 `ComplexSweeper-v1.2.0-android.apk`，使用与首版一致的开发测试证书签名，可直接安装。
+- macOS：下载 `ComplexSweeper-v1.2.0-macos.zip`，解压为 `复扫雷.app`，支持 Apple Silicon 与 Intel；未配置 Developer ID 分发签名或公证。
+- HarmonyOS：下载 `ComplexSweeper-v1.2.0-harmonyos-unsigned.hap`，需使用自己的证书与描述文件签名后安装。
 - iOS / iPadOS：真机未签名 App 与模拟器 App 分别提供 ZIP；真机 App 需自行签名，模拟器包只用于模拟器。
 
 Release 同时提供未签名 Android APK / AAB、`SHA256SUMS.txt` 和 `manifest.json`。附件的用途、签名范围与校验方式见发布说明。
@@ -49,7 +49,7 @@ Release 同时提供未签名 Android APK / AAB、`SHA256SUMS.txt` 和 `manifest
 八邻域最多有八颗雷，共有 24 种可达显示值。
 
 **空白和 0 不同**：空白表示周围完全没有雷，会自动连片展开；0 表示周围有雷，但正负抵消，不会继续扩散。
-插了旗的格子不能翻开，首击和连片展开也会绕开旗子；需要先撤旗。
+长按带标记格会清除该格标记并翻开，计雷器同步更新；空白连片展开与数字格展开仍跳过其他带标记格。
 首次翻开时才布雷，首击格及其八邻域安全（九宫格），四种雷的数量随机分配，开局后在顶部四个计雷器上公布。
 
 | 难度 | 棋盘（列 × 行） | 雷数 |
@@ -59,13 +59,13 @@ Release 同时提供未签名 Android APK / AAB、`SHA256SUMS.txt` 和 `manifest
 | 高级 | 30 × 16 | 99 |
 
 高级棋盘在小屏幕上可以横向拖动，矮窗支持纵向滚动。
-底部 Tabs 选择圆复数 / 闵可夫斯基模式，棋盘上方分段选择初级 / 中级 / 高级（macOS 难度在窗口工具栏）。
+底部 Tabs 选择圆复数 / 闵可夫斯基模式，棋盘上方分段选择初级 / 中级 / 高级。
 点人脸重开当前模式与难度；切换模式保留难度并重开，切换难度保留模式并重开，重复选择当前项保留当前局。
 标题栏「关于」包含教程、版本、原作者和移植者信息。
 
 | 操作 | HarmonyOS / Android / iOS / iPadOS | macOS |
 | --- | --- | --- |
-| 翻开未标记的格子 | 长按 400ms | 左键 |
+| 翻开未翻开的格子（自动清除该格标记） | 长按 400ms | 左键 |
 | 标记未翻开的格子 | 轻点 | 右键 |
 | 展开已翻开的数字格 | 轻点 | 右键 |
 | 重开 | 点人脸按钮 | 点人脸按钮 |
@@ -86,19 +86,20 @@ Release 同时提供未签名 Android APK / AAB、`SHA256SUMS.txt` 和 `manifest
 
 ## 移植范围与进度
 
-更新时间：2026-10-12。三端同步原版最新提交 `80502e5`（v1.2.0）中的两种模式；移植应用版本为 1.1.0。
+更新时间：2026-10-18。三端同步原版 `f6b80bb`（源码版本 1.3.0）的彩色／黑白图集与外观切换，并支持长按清旗翻开；移植应用版本为 1.2.0。
 
 | 功能 | HarmonyOS | Apple | Android |
 | --- | --- | --- | --- |
 | 圆复数、四种雷、24 个显示值 | 已实现 | 已实现 | 已实现 |
 | 三档难度、随机雷型、首击九宫格安全 | 已实现 | 已实现 | 已实现 |
-| 空白连片展开、旗子保护、实虚比例展开判据 | 已实现 | 已实现 | 已实现 |
+| 空白连片展开、长按清旗翻开、实虚比例展开判据 | 已实现 | 已实现 | 已实现 |
 | 四计雷器、计时、人脸重开、教程、最快纪录 | 已实现 | 已实现 | 已实现 |
 | 胜负复盘、像素贴图、六段音效 | 已实现 | 已实现 | 已实现 |
 | 触屏轻点 / 长按、数字展开、棋盘滚动 | 已实现 | 已实现 | 已实现 |
 | 双曲复数 / 闵可夫斯基模式、39 个显示值、严格展开 | 已实现 | 已实现 | 已实现 |
 | 底部模式 Tabs、独立难度选择、分模式纪录 | 已实现 | 已实现 | 已实现 |
 | 自定义雷区与指定四雷配比 | 未移植 | 未移植 | 未移植 |
+| 彩色／黑白切换、外观偏好保存 | 已实现 | 已实现 | 已实现 |
 | 音效开关、独立纪录窗口 | 未移植 | 未移植 | 未移植 |
 
 当前移植范围是**圆复数和闵可夫斯基两种模式及标准三档难度**。自定义雷区、指定四雷配比、音效开关与独立纪录窗口仍待移植。
@@ -124,11 +125,16 @@ ComplexSweeper/
 用 DevEco Studio 打开 `HarmonyOS/`。构建命令在对应平台目录内执行，签名使用开发者自己的配置。
 APK / AAB、HAP、App / IPA 的输出路径和安装方式见各平台 README。
 
-GitHub Actions 执行鸿蒙引擎自检、安卓单测 / lint / Debug 构建、Apple 引擎自检及 macOS / iOS 模拟器未签名构建。HarmonyOS HAP 与 Apple 真机签名产物在本机 SDK / 签名环境生成。当前 Release 的附件用途与签名说明见 [v1.1.0 发布说明](docs/releases/v1.1.0.md)。
+GitHub Actions 执行鸿蒙引擎自检、安卓单测 / lint / Debug 构建、Apple 引擎自检及 macOS / iOS 模拟器未签名构建。HarmonyOS HAP 与 Apple 真机签名产物在本机 SDK / 签名环境生成。当前 Release 的附件用途与签名说明见 [v1.2.0 发布说明](docs/releases/v1.2.0.md)。
 
 产品介绍、共同玩法、整体范围与原作署名集中维护在本文件；各平台 README 维护架构、目录、平台适配、资源生成、构建与验证说明。
 
 ## 验证记录
+
+1.2.0 的素材来源、外观设置、生成方式与本次验证见 [外观同步记录](docs/APPEARANCE_SYNC.md)。
+2026-10-18 鸿蒙顶栏与 iPhone / iPad 分别验收见 [设备验证记录](docs/VALIDATION_2026-10-18.md)。
+顶部「彩色｜黑白」分段选择器可随时切换，默认彩色，重启恢复偏好；切换保留当前局面、旗帜与计时。
+
 
 2026-10-12，针对 1.1.0 的验证：
 
@@ -156,3 +162,5 @@ iPhone 无线 XCUITest 的运行器连接未成功，真机结果来自官方设
 [Android 素材说明](Android/docs/ASSETS.md)与 [Apple 素材说明](Apple%20Platform/docs/ASSETS.md)。
 
 本项目与 Microsoft 无隶属关系，也未获其授权或背书；相关商标属于各自权利人。
+
+2026-10-18追加：长按带标记格会清除标记并翻开，计雷器同步更新；其他格的标记仍受连片展开保护。验证与设备边界见 [长按清旗验收](docs/FLAG_REVEAL_2026-10-18.md)。

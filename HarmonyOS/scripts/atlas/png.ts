@@ -1,6 +1,6 @@
 import * as zlib from 'node:zlib';
 
-// 极简 PNG 读写：只支持 8 位 RGBA、非隔行 —— 图集和图标正好都是这个格式。
+// 极简 PNG 读写：支持 8 位 RGBA / 灰度带 alpha、非隔行 —— 图集和图标正好都是这个格式。
 // 手边没有 ImageMagick / PIL，所以用 Node 自带的 zlib 自己解、自己编。
 //
 // 被 slice.ts（切图集）和 make-icon.ts（做应用图标）共用。
@@ -66,12 +66,12 @@ export function decodePng(buf: Buffer): Bitmap {
     }
     off += 12 + len;
   }
-  if (bitDepth !== 8 || colorType !== 6) {
-    throw new Error(`只处理 8 位 RGBA，实际是位深 ${bitDepth} 颜色类型 ${colorType}`);
+  if (bitDepth !== 8 || (colorType !== 6 && colorType !== 4)) {
+    throw new Error(`只处理 8 位 RGBA / 灰度带 alpha，实际是位深 ${bitDepth} 颜色类型 ${colorType}`);
   }
 
   const raw = zlib.inflateSync(Buffer.concat(idat));
-  const bpp = 4;
+  const bpp = colorType === 4 ? 2 : 4;
   const stride = width * bpp;
   const out = Buffer.alloc(height * stride);
   let pos = 0;
@@ -103,6 +103,14 @@ export function decodePng(buf: Buffer): Bitmap {
       }
       cur[i] = v & 0xff;
     }
+  }
+  if (colorType === 4) {
+    const rgba = Buffer.alloc(width * height * 4);
+    for (let i = 0; i < width * height; i++) {
+      rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = out[i * 2];
+      rgba[i * 4 + 3] = out[i * 2 + 1];
+    }
+    return new Bitmap(width, height, rgba);
   }
   return new Bitmap(width, height, out);
 }

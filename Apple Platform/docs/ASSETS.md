@@ -1,3 +1,5 @@
+> 2026-10-17 更新：当前图集同步上游 `f6b80bb`（源码版本 1.3.0），`assets/atlas.png` 与 `assets/atlas-bw.png` 各含116个槽位。黑白图集是作者单独绘制的图案；生成时按上游灰度公式与银灰底合成透明像素，图标保留透明度。三端以 `cw_` / `cw_bw_` 前缀导出，两套共232张原始贴图逐文件校验一致。仓库根目录执行 `node scripts/sync-appearance-assets.ts` 可复现，并重建启动图标。授权与原作者署名沿用以下说明。
+
 > 2026-10-12 更新：图集同步原版 `80502e5` 的116个槽位，切图脚本包含双曲模式全部素材。`hnum_*_i` 用于负显示值，`hflag/hmine/hboom/hrightflag` 的3/4型用于j雷，`led_j`用于计雷器；正值与1/2型雷复用圆复数贴图。自制难度与启动图标继续保留。以下旧清单作为历史参考。
 
 # 素材说明 / Asset Notice
@@ -7,13 +9,13 @@
 *The image and sound assets in this repository fall into three categories with different licensing.
 Read this before redistributing, republishing, or using them commercially.*
 
-素材来自上游 **复扫雷 v1.2.0**（[Yueqing-Chen/complexweeper-A-minesweeper-game](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game)）：
+素材来自上游 **复扫雷 `f6b80bb`（源码版本1.3.0）**（[Yueqing-Chen/complexweeper-A-minesweeper-game](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game)）：
 
 - 图集放在 `assets/atlas.png`（208×207 整图）+ `assets/atlas.json`（槽位表），
   从上游 `素材/图集.png` / `素材/图集.json` 原样拷贝而来。
   由 `Tools/slice-atlas.ts` 切成单张 PNG，写成 `ComplexSweeper-Apple/Assets.xcassets/`
   里一个个 `.imageset`，文件名统一加 `cw_` 前缀。
-  切图脚本是确定性的：拿仓库里的图集重跑一遍，切出来的 74 张与已提交的逐字节一致。
+  切图脚本是确定性的：拿仓库里的图集重跑一遍，切出来的每套 116 张与已提交的逐字节一致。
 - 应用图标与标签页图标由 `Tools/make-icon.ts` 从图集的 `icon` 槽位放大生成。
 - 音效从上游 `正式版/src/sounds.bin` 提取，用的是上游自带的
   `node 正式版/tools/gen_sounds.js --extract <目录>`，输出到
@@ -124,15 +126,12 @@ to one display size.*
 
 ---
 
-## 未使用的上游素材
+## 双曲复数与黑白素材
 
-上游图集里 42 张双曲复数模式（闵可夫斯基模式，`j²=1`）的贴图 ——
-`hnum_*`、`hflag_*`、`hmine_*`、`hboom_*`、`hwrong_*`、`hright_*`、`hwrongflag_*`、
-`hrightflag_*`、`led_j` —— 本移植版没有实现该模式，切图脚本按名字前缀跳过，没有切进资源目录。
-上游的**圆复数模式**（本版实现的模式）与它们无关。
+全部116个槽位均已切入资源目录。`hnum_*`、`hflag_*`、`hmine_*`、`hboom_*`、
+`hrightflag_*`、`led_j` 用于双曲复数模式；正显示值及1/2型雷按原版复用圆复数贴图。
+彩色与黑白两套使用相同槽位及尺寸；后者资源名称为 `cw_bw_<槽位名>`。
 
-*The 42 hyperbolic-mode sprites in the upstream atlas are skipped by name prefix; this port
-does not implement that mode.*
 
 ---
 

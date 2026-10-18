@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
+import top.rayawa.dashboard.complexsweeper.android.ui.LocalColorEnabled
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import top.rayawa.dashboard.complexsweeper.android.ui.GameController
@@ -27,7 +29,9 @@ class MainActivity : ComponentActivity() {
         })[GameController::class.java]
         setContent {
             ComplexSweeperAndroidTheme {
-                GameScreen(game)
+                CompositionLocalProvider(LocalColorEnabled provides game.colorEnabled) {
+                    GameScreen(game)
+                }
             }
         }
     }

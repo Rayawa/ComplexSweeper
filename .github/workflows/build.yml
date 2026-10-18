@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
+      - name: Check appearance assets across native ports
+        run: node ../scripts/check-appearance-assets.ts
       - name: Check HarmonyOS engine
         run: ./scripts/engine-check/run.sh
 

@@ -1,7 +1,7 @@
 # Apple 平台移植与工程说明
 
-**当前版本 1.1.0（build 2）**。底部 Tabs 切换圆复数 / 闵可夫斯基模式；iOS / iPadOS 使用棋盘上方分段 `Picker` 选择难度，macOS 使用窗口工具栏。
-下载与签名说明见 [v1.1.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.1.0)。
+**当前版本 1.2.0（build 3）**。底部 Tabs 切换圆复数 / 闵可夫斯基模式；iOS / iPadOS 使用棋盘上方分段 `Picker` 选择难度，macOS 与 iOS 共用棋盘上方的分段选择布局。
+1.2.0 下载与签名说明见 [v1.2.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.2.0)。
 
 本目录是复扫雷的 iOS / iPadOS / macOS 原生工程，使用单一 SwiftUI target。
 应用介绍、玩法、原作致谢与共同移植范围见[仓库总 README](../README.md)。以下命令均在 `Apple Platform/` 中执行。
@@ -64,6 +64,15 @@ macOS 使用 AppKit `MouseButtonCatcher`，左键翻开未翻开的格子，右�
 
 标题使用共享 `AppTitle`，明确指定黑色，在系统深浅色下保持一致。macOS 隐藏系统绘制的标题文字，并在工具栏显示共享标题；窗口标题仍保留供系统使用。
 原作者署名使用 SwiftUI `Link` 打开上游 GitHub。
+
+## 彩色与黑白外观（1.2.0）
+
+顶部提供「彩色｜黑白」原生分段选择器，默认彩色，立即更新全部游戏贴图；切换保留局面与计时，重启恢复偏好。
+两套资源分别使用 `cw_` / `cw_bw_` 前缀，均来自上游 `f6b80bb` 的专用图集；黑白图案包含上游绘制的符号与纹理。
+从仓库根目录执行 `node scripts/sync-appearance-assets.ts` 可重建三端两套素材、静态映射和启动图标。
+本次验证与设备测试边界见 [APPEARANCE_SYNC.md](../docs/APPEARANCE_SYNC.md)。
+新增横竖屏回归与 iPhone / iPad 分别验证见 [2026-10-18验收记录](../docs/VALIDATION_2026-10-18.md)。
+1.2.0本轮结果：iPhone / iPad模拟器各10项通过；iPad Pro 11英寸M4真机无线XCUITest 10项通过；iPhone17真机完成外观、局面保留、重启恢复偏好和横屏等交互验收，其无线XCUITest因DTX通道初始化失败未执行用例。
 
 ## 素材与图标生成
 
@@ -135,3 +144,5 @@ iPhone 无线 XCUITest 运行器未建立测试通道，真机自动化未执行
 游戏图集和音效变更需要同步三个平台，图标通过本平台脚本重新生成。
 共同功能与进度在[总 README](../README.md#移植范围与进度)维护；本目录保留平台实现和工程说明。
 详细历史回归见 [PORTING_STATUS.md](docs/PORTING_STATUS.md)，源码许可证见 [LICENSE](LICENSE)。
+
+2026-10-18追加：长按带标记格会清除标记并翻开，计雷器同步更新；其他格的标记仍受连片展开保护。验证与设备边界见 [长按清旗验收](../docs/FLAG_REVEAL_2026-10-18.md)。

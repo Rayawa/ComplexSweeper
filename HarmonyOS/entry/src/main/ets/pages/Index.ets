@@ -1,3 +1,5 @@
+import { AppearanceStore } from '../model/Appearance';
+import { colorSprite } from '../view/AppearanceSprites';
 import { BlurStrategy, HdsNavigation, HdsNavigationTitleMode, HdsTabs, HdsTabsController, ScrollEffectType } from '@kit.UIDesignKit';
 import { ColorMetrics, display, LengthMetrics, SegmentButtonV2Items, TabSegmentButtonV2 } from '@kit.ArkUI';
 import { systemDateTime } from '@kit.BasicServicesKit';
@@ -119,6 +121,7 @@ function range(n: number): number[] {
 @Entry
 @Component
 struct Index {
+  @StorageLink('colorEnabled') colorEnabled: boolean = true;
   @State board: Board =
     new Board(DIFFICULTIES[0].w, DIFFICULTIES[0].h, DIFFICULTIES[0].mines, 1);
   @State difficultyIndex: number = 0;
@@ -158,7 +161,14 @@ struct Index {
     { text: '高级', accessibilityText: '高级难度' }
   ]);
 
+  private appearanceItems: SegmentButtonV2Items = new SegmentButtonV2Items([
+    { text: '彩色', accessibilityText: '彩色外观' },
+    { text: '黑白', accessibilityText: '黑白外观' }
+  ]);
+
   private tabsController: HdsTabsController = new HdsTabsController();
+  private appearance: AppearanceStore = new AppearanceStore();
+  @State appearanceLoaded: boolean = false;
   private stats: StatsStore = new StatsStore(DIFFICULTIES.length * 2);
   private sound: SoundBoard = new SoundBoard();
   private timerId: number = -1;
@@ -170,6 +180,10 @@ struct Index {
   aboutToAppear(): void {
     const ctx = this.getUIContext().getHostContext();
     if (ctx !== undefined) {
+      this.appearance.load(ctx).then((enabled: boolean) => {
+        this.colorEnabled = enabled;
+        this.appearanceLoaded = true;
+      });
       this.stats.load(ctx).then(() => {
         this.syncBest();
       }).catch(() => {
@@ -329,7 +343,7 @@ struct Index {
       this.gameState = GameState.PLAYING;
       this.startTimer();
     }
-    // 连片展开和结算都可能清掉旗子，计雷器要跟着走
+    // 主动翻开会清除目标格标记，计雷器要同步刷新
     this.refreshMarks();
     if (r === ACT_BOOM) {
       this.finishGame();
@@ -486,7 +500,7 @@ struct Index {
   @Builder
   Counter(t: number) {
     Row() {
-      Image(flagSprite(t + 1, this.mode))
+      Image(colorSprite(flagSprite(t + 1, this.mode), this.colorEnabled))
         .width(this.ledIcon())
         .height(this.ledIcon())
         .interpolation(ImageInterpolation.None)
@@ -524,7 +538,7 @@ struct Index {
       .alignItems(HorizontalAlign.Start)
 
       Column({ space: 6 }) {
-        Image(faceSprite(this.faceKind()))
+        Image(colorSprite(faceSprite(this.faceKind()), this.colorEnabled))
           .id('restart')
           .accessibilityText('重新开始')
           .width(FACE_SIZE)
@@ -707,6 +721,50 @@ struct Index {
     .margin({ bottom: 6 })
   }
 
+  private selectAppearance(index: number): void {
+    if (!this.appearanceLoaded || (index !== 0 && index !== 1)) return;
+    const enabled: boolean = index === 0;
+    if (enabled === this.colorEnabled) return;
+    this.colorEnabled = enabled;
+    this.appearance.save(enabled);
+  }
+
+  @Builder
+  AppearanceSelector() {
+    TabSegmentButtonV2({
+      items: this.appearanceItems,
+      selectedIndex: this.colorEnabled ? 0 : 1,
+      $selectedIndex: (index: number): void => { this.selectAppearance(index); },
+      onItemClicked: (index: number): void => { this.selectAppearance(index); },
+      itemFontColor: ColorMetrics.resourceColor($r('app.color.classic_dark')),
+      itemSelectedFontColor: ColorMetrics.resourceColor($r('app.color.classic_dark')),
+      itemSelectedBackgroundColor: ColorMetrics.rgba(102, 102, 102, 0.13),
+      itemMinHeight: LengthMetrics.vp(32),
+      buttonBackgroundColor: ColorMetrics.rgba(0, 0, 0, 0),
+      buttonBackgroundBlurStyle: BlurStyle.NONE,
+      buttonMinHeight: LengthMetrics.vp(40),
+      buttonPadding: LengthMetrics.vp(4),
+      enableStateAnimation: true
+    })
+    .id('appearance')
+    .accessibilityText('外观')
+    .accessibilityDescription(this.colorEnabled ? '彩色' : '黑白')
+    .width(112)
+    .enabled(this.appearanceLoaded)
+  }
+
+  /** 外观分段控件固定在系统顶栏中间，标题与关于按钮仍由HDS绘制。 */
+  @Builder
+  TitleBarAppearance() {
+    Column() {
+      this.AppearanceSelector()
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .hitTestBehavior(HitTestMode.Transparent)
+  }
+
   @Builder
   GamePage() {
     Column() {
@@ -778,12 +836,12 @@ struct Index {
         TabContent() {
           this.GamePage()
         }
-        .tabBar(tabBarStyle($r('app.media.cw_flag_3'), '圆复数'))
+        .tabBar(tabBarStyle(colorSprite($r('app.media.cw_flag_3'), this.colorEnabled), '圆复数'))
 
         TabContent() {
           this.GamePage()
         }
-        .tabBar(tabBarStyle($r('app.media.cw_hflag_3'), '闵可夫斯基'))
+        .tabBar(tabBarStyle(colorSprite($r('app.media.cw_hflag_3'), this.colorEnabled), '闵可夫斯基'))
 
       }
       .barPosition(BarPosition.End)
@@ -816,12 +874,14 @@ struct Index {
     .titleBar({
       content: {
         title: { mainTitle: '复扫雷' },
+        stackBuilder: (): void => { this.TitleBarAppearance(); },
         // 关于常驻标题栏，三个难度页都能点开。tab 只留给难度。
         menu: {
           value: [
             {
               content: {
                 label: '关于',
+                componentId: 'about',
                 icon: $r('sys.symbol.info_circle'),
                 isEnabled: true,
                 action: () => {

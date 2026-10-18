@@ -1,3 +1,4 @@
+import { colorSprite } from './AppearanceSprites';
 import { TYPE_LABELS } from '../model/Complex';
 import { flagSprite } from '../view/Sprites';
 import { feedbackTick } from '../view/Feedback';
@@ -6,7 +7,7 @@ import { feedbackTick } from '../view/Feedback';
 const TYPE_INDEXES: number[] = [0, 1, 2, 3];
 
 /** 「关于」底部展示的版本号，与应用配置 app.json5 的 versionName 保持一致 */
-const APP_VERSION: string = '1.1.0';
+const APP_VERSION: string = '1.2.0';
 
 /**
  * 「关于」弹层的内容，装在标题栏那个 bindSheet 里。
@@ -20,12 +21,13 @@ const APP_VERSION: string = '1.1.0';
  */
 @Component
 export struct TutorialContent {
+  @StorageLink('colorEnabled') colorEnabled: boolean = true;
   // ---------------- 顶部：图标 + 中英文名 ----------------
 
   @Builder
   AppHeader() {
     Row({ space: 14 }) {
-      Image($r('app.media.cw_icon'))
+      Image(colorSprite($r('app.media.cw_icon'), this.colorEnabled))
         .width(56)
         .height(56)
         .interpolation(ImageInterpolation.None)
@@ -85,7 +87,7 @@ export struct TutorialContent {
     Row({ space: 20 }) {
       ForEach(TYPE_INDEXES, (t: number) => {
         Column({ space: 4 }) {
-          Image(flagSprite(t + 1))
+          Image(colorSprite(flagSprite(t + 1), this.colorEnabled))
             .width(30)
             .height(30)
             .interpolation(ImageInterpolation.None)
@@ -134,7 +136,7 @@ export struct TutorialContent {
 
         this.SectionTitle('操作')
         this.Body('单击未翻开的格子：循环标记 空 → +1 → −1 → +i / +j → −i / −j → 空。')
-        this.Body('长按未翻开的格子：翻开。插了旗的格子翻不开，得先把旗循环回空。')
+        this.Body('长按未翻开的格子：清除该格标记并翻开。首击安全，开局后翻到雷会失败；连片展开仍跳过其他标记格。')
         this.Body('单击已翻开的数字格：周围旗子插对时，一次掀开周围没插旗的格子。')
 
         // 页脚：一条分割线，然后是版本、开发者与版权

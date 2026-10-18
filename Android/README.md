@@ -1,7 +1,7 @@
 # Android 移植与工程说明
 
-**当前版本 1.1.0（versionCode 2）**。底部 Tabs 切换圆复数 / 闵可夫斯基模式，棋盘上方使用 Material 3 `SingleChoiceSegmentedButtonRow` 选择难度。
-下载与签名说明见 [v1.1.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.1.0)。
+**当前版本 1.2.0（versionCode 3）**。底部 Tabs 切换圆复数 / 闵可夫斯基模式，棋盘上方使用 Material 3 `SingleChoiceSegmentedButtonRow` 选择难度。
+1.2.0 下载与签名说明见 [v1.2.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.2.0)。
 
 本目录是复扫雷的 Kotlin / Jetpack Compose 原生工程。
 应用介绍、玩法、原作致谢与共同移植范围见[仓库总 README](../README.md)。以下命令均在 `Android/` 中执行。
@@ -67,6 +67,13 @@ Compose 快照状态驱动格子和计雷器刷新，控制器销毁时释放音
 SharedPreferences 保存六个模式 / 难度槽位，圆复数沿用原有三个存档键。
 测试通过格子、计雷器等语义标签定位控件。原作者署名用 Compose 可点击文本和 `LocalUriHandler` 打开上游 GitHub。
 
+## 彩色与黑白外观（1.2.0）
+
+顶部提供「彩色｜黑白」原生分段选择器，默认彩色，立即更新全部游戏贴图；切换保留局面与计时，重启恢复偏好。
+两套资源分别使用 `cw_` / `cw_bw_` 前缀，均来自上游 `f6b80bb` 的专用图集；黑白图案包含上游绘制的符号与纹理。
+从仓库根目录执行 `node scripts/sync-appearance-assets.ts` 可重建三端两套素材、静态映射和启动图标。
+本次验证与设备测试边界见 [APPEARANCE_SYNC.md](../docs/APPEARANCE_SYNC.md)。
+
 ## 素材与图标生成
 
 使用 Node 24+，从本目录执行：
@@ -112,7 +119,7 @@ node --experimental-strip-types tools/make-icon.ts \
 2026-10-12，1.1.0 验证：15 项 JVM 单测通过（0 失败、0 错误），lint 零错误，保留非错误提示；Debug 应用与设备测试 APK 构建通过。
 引擎覆盖各 360 局两种模式、39 个双曲显示值、178,200 次展开判据检查及固定种子指纹。
 
-`TouchInteractionTest.kt` 中 5 项设备交互测试覆盖首击旗子保护、长按与轻点互斥、计雷器更新、Activity 重建、棋盘拖动，以及模式 / 难度切换和重复选择。
+`TouchInteractionTest.kt` 中设备交互测试覆盖长按清旗并安全首击、长按与轻点互斥、计雷器更新、Activity 重建、棋盘拖动，以及模式 / 难度切换和重复选择。
 当前没有连接 Android 设备，尚未执行这些设备测试；华为真机验收针对原生 HarmonyOS 工程。
 完整同步记录见 [MODE_SYNC.md](../docs/MODE_SYNC.md)。
 
@@ -122,3 +129,5 @@ node --experimental-strip-types tools/make-icon.ts \
 游戏图集和音效变更需要同步三个平台，图标通过本平台脚本重新生成。
 共同功能与进度在[总 README](../README.md#移植范围与进度)维护；本目录保留平台实现和工程说明。
 详细历史回归见 [PORTING_STATUS.md](docs/PORTING_STATUS.md)，源码许可证见 [LICENSE](LICENSE)。
+
+2026-10-18追加：长按带标记格会清除标记并翻开，计雷器同步更新；其他格的标记仍受连片展开保护。验证与设备边界见 [长按清旗验收](../docs/FLAG_REVEAL_2026-10-18.md)。

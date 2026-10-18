@@ -1,3 +1,4 @@
+import { colorSprite } from './AppearanceSprites';
 import { ledSprite } from './Sprites';
 
 /** 数码管里的特殊格子 */
@@ -13,6 +14,7 @@ const CELL_UNIT_I: number = 11;
  */
 @Component
 export struct LedReadout {
+  @StorageLink('colorEnabled') colorEnabled: boolean = true;
   /**
    * 必须用 @Prop：ArkUI 里子组件未加装饰器的成员变量只在构造时赋值，
    * 父组件重绘不会同步过来。用普通变量的话，计时器会永远停在 0。
@@ -71,7 +73,7 @@ export struct LedReadout {
   build() {
     Row() {
       ForEach(this.codes(), (code: number, index: number) => {
-        Image(ledSprite(code))
+        Image(colorSprite(ledSprite(code), this.colorEnabled))
           .width(this.cellWidth)
           .height(this.cellHeight())
           .interpolation(ImageInterpolation.None)

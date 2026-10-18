@@ -32,21 +32,23 @@ class TouchInteractionTest {
         }
     }
 
-    @Test fun flagsProtectFirstRevealAndNextTapStillWorks() {
+    @Test fun longPressClearsFlagAndStartsGame() {
         val target = compose.onNodeWithTag("cell-0-0")
-        target.performTouchInput { click() }
-        hold(0, 0)
-        compose.runOnIdle {
-            assertFalse(game.board.isStarted())
-            assertEquals(GameState.READY, game.gameState)
-            assertEquals(PRESS_NONE, game.pressMode)
-        }
-        for (value in listOf("旗帜 -1", "旗帜 +i", "旗帜 -i", "未翻开")) {
+        for (value in listOf("旗帜 +1", "旗帜 -1", "旗帜 +i", "旗帜 -i", "未翻开", "旗帜 +1")) {
             target.performTouchInput { click() }
             target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value))
         }
+        compose.onNodeWithTag("cell-0-1").performTouchInput { click() }
         hold(0, 0)
-        compose.runOnIdle { assertTrue(game.board.isStarted()) }
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "空白"))
+        compose.runOnIdle {
+            assertTrue(game.board.isStarted())
+            assertEquals(GameState.PLAYING, game.gameState)
+            assertEquals(0, game.board.cellAt(0, 0).flag)
+            assertEquals(1, game.board.flagsTotal())
+            assertFalse(game.board.cellAt(0, 1).isOpen)
+            assertEquals(PRESS_NONE, game.pressMode)
+        }
     }
 
     @Test fun flagCountersUpdateImmediately() {
@@ -112,4 +114,49 @@ class TouchInteractionTest {
             assertFalse(game.board.isStarted())
         }
     }
+    @Test fun appearanceSwitchKeepsActiveBoardAndPersists() {
+        var initial = true
+        compose.runOnIdle { initial = game.colorEnabled }
+        try {
+            for (mode in top.rayawa.dashboard.complexsweeper.android.model.GameMode.entries) {
+                for (difficulty in 0..2) {
+                    compose.runOnIdle { game.selectMode(mode); game.newGame(difficulty) }
+                    hold(4, 4)
+                    lateinit var board: top.rayawa.dashboard.complexsweeper.android.engine.Board
+                    var gameId = 0
+                    var elapsed = 0
+                    var snapshot = emptyList<Triple<Int, Int, Boolean>>()
+                    compose.runOnIdle {
+                        board = game.board
+                        val hidden = board.cells.first { !it.isOpen }
+                        game.tap(hidden.row, hidden.col)
+                        gameId = game.gameId
+                        elapsed = game.elapsed
+                        snapshot = board.cells.map { Triple(it.mineKind, it.flag, it.isOpen) }
+                    }
+                    var targetColor = true
+                    compose.runOnIdle { targetColor = !game.colorEnabled }
+                    val target = compose.onNodeWithTag(if (targetColor) "appearance-color" else "appearance-mono")
+                    target.performTouchInput { click() }
+                    // 重复选择当前外观同样不能改变局面或切回另一外观。
+                    target.performTouchInput { click() }
+                    compose.runOnIdle {
+                        assertSame(board, game.board)
+                        assertEquals(gameId, game.gameId)
+                        assertTrue(game.elapsed >= elapsed)
+                        assertEquals(GameState.PLAYING, game.gameState)
+                        assertEquals(snapshot, game.board.cells.map { Triple(it.mineKind, it.flag, it.isOpen) })
+                        val stored = compose.activity.getSharedPreferences("complexsweeper_settings", 0)
+                        assertEquals(game.colorEnabled, stored.getBoolean("colorEnabled", !game.colorEnabled))
+                    }
+                }
+            }
+            compose.activityRule.scenario.recreate()
+            compose.waitForIdle()
+            compose.runOnIdle { assertEquals(initial, game.colorEnabled) }
+        } finally {
+            compose.runOnIdle { game.selectColor(initial) }
+        }
+    }
+
 }

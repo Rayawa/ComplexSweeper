@@ -45,12 +45,14 @@ struct BevelBorder: View {
 /// 放大一律最近邻：像素画一插值就糊成一团。贴图只有一份原始位图
 /// （资源目录里是 Single Scale），所以 1 点 = 1 像素由系统保证。
 struct PixelImage: View {
+    @AppStorage("colorEnabled") private var colorEnabled = true
     let name: String
     let width: CGFloat
     let height: CGFloat
 
     var body: some View {
-        Image(name)
+        Image(!colorEnabled && name.hasPrefix("cw_") && !name.hasPrefix("cw_tab_")
+              ? name.replacingOccurrences(of: "cw_", with: "cw_bw_", options: .anchored) : name)
             .interpolation(.none)
             .resizable()
             .frame(width: width, height: height)

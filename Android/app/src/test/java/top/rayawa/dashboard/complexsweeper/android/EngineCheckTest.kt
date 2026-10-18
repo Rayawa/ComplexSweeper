@@ -157,25 +157,42 @@ class EngineCheckTest {
         }
     }
 
-    // ---------- 4. 旗子保护格子 ----------
-
+    // ---------- 4. 主动翻开清旗，其他旗仍受连片保护 ----------
     @Test
-    fun flagsProtectCellsAndCycleBackToEmpty() {
-        val b = freshBoard(9, 9, 10, 99, 4, 4)
-        val target = b.cells.indexOfFirst { !it.isOpen && it.mineKind < 0 }
-        assertTrue("没找到可插旗的非雷格", target >= 0)
-        val r = target / b.w
-        val c = target % b.w
+    fun explicitRevealClearsEveryFlagInBothModes() {
+        for (mode in listOf(GameMode.COMPLEX, GameMode.HYPER)) {
+            for (flag in 1..4) {
+                val first = Board(9, 9, 10, 99, mode)
+                repeat(flag) { first.cycleFlag(4, 4) }
+                first.cycleFlag(4, 5)
+                assertEquals(ACT_OK, first.reveal(4, 4))
+                assertTrue(first.isStarted() && first.cellAt(4, 4).isOpen)
+                assertEquals(0, first.cellAt(4, 4).flag)
+                assertFalse(first.cellAt(4, 5).isOpen)
+                assertEquals(1, first.cellAt(4, 5).flag)
+                assertEquals(1, first.flagsTotal())
+                for (t in 0..3) assertEquals(first.typeTotal[t] - (if (t == 0) 1 else 0), first.unmarked(t))
 
-        b.cycleFlag(r, c)
-        assertEquals("插旗失败", 1, b.cells[target].flag)
-        assertEquals("插了旗的格子居然被翻开了", ACT_IGNORED, b.reveal(r, c))
-        assertFalse("插了旗的格子还是被翻开了", b.cells[target].isOpen)
-
-        // 循环一圈回到空
-        repeat(4) { b.cycleFlag(r, c) }
-        assertEquals("旗子循环没有回到空", 0, b.cells[target].flag)
-        assertEquals("清旗后计数没还原", b.typeTotal[0], b.unmarked(0))
+                for (mine in listOf(false, true)) {
+                    val b = Board(9, 9, 10, 99, mode)
+                    b.startAt(4, 4)
+                    val target = b.cells.first { !it.isOpen && (it.mineKind >= 0) == mine }
+                    repeat(flag) { b.cycleFlag(target.row, target.col) }
+                    assertEquals(if (mine) ACT_BOOM else ACT_OK, b.reveal(target.row, target.col))
+                    assertTrue(target.isOpen)
+                    assertEquals(0, target.flag)
+                    assertEquals(0, b.flagsTotal())
+                    for (t in 0..3) assertEquals(b.typeTotal[t], b.unmarked(t))
+                    if (mine) {
+                        assertTrue(b.isOver() && !b.isWon() && target.exploded)
+                        val other = b.cells.first { !it.isOpen }
+                        val before = other.flag
+                        assertEquals(ACT_IGNORED, b.reveal(other.row, other.col))
+                        assertEquals(before, other.flag)
+                    }
+                }
+            }
+        }
     }
 
     // ---------- 5. 展开判定 ----------
@@ -222,7 +239,7 @@ class EngineCheckTest {
         b.cycleFlag(wrongIdx / b.w, wrongIdx % b.w)
 
         // 手动触发失败结算：翻一颗没插旗的雷
-        // （插了旗的雷翻不开，那是旗子在保护格子，这里不能拿它当引信）
+        // （保留已有旗帜用于验证结算标记，另选未插旗的雷作为引信）
         val mineIdx = b.cells.indexOfFirst { it.mineKind >= 0 && !it.isOpen && it.flag == 0 }
         assertTrue("没找到没插旗的雷", mineIdx >= 0)
         assertEquals("翻到雷没有返回 ACT_BOOM", ACT_BOOM, b.reveal(mineIdx / b.w, mineIdx % b.w))
@@ -360,15 +377,14 @@ class EngineCheckTest {
     }
 
     @Test
-    fun firstRevealHonorsFlagsAndStartsOnlyOnce() {
+    fun firstRevealClearsFlagAndStartsOnlyOnce() {
         val b = Board(9, 9, 10, 1)
         b.cycleFlag(4, 4)
         b.startAt(4, 4)
         assertFalse(b.isStarted())
-        assertEquals(ACT_IGNORED, b.reveal(4, 4))
-        assertFalse(b.isStarted())
-        repeat(4) { b.cycleFlag(4, 4) }
         assertEquals(ACT_OK, b.reveal(4, 4))
+        assertEquals(0, b.cellAt(4, 4).flag)
+        assertEquals(0, b.flagsTotal())
         assertTrue(b.isStarted())
         assertEquals(10, b.mineTotal())
         assertTrue(b.cellAt(4, 4).isOpen)

@@ -137,28 +137,36 @@ do {
     print("✓ 首击连片展开了 \(opened) 格，全是安全格")
 }
 
-// ---------- 4. 旗子保护格子 ----------
-do {
-    let b = freshBoard(9, 9, 10, 99, 4, 4)
-    var target = -1
-    for i in 0..<b.cells.count where !b.cells[i].isOpen && b.cells[i].mineKind < 0 {
-        target = i
-        break
+// ---------- 4. 主动翻开清旗，其他旗仍受连片保护 ----------
+for mode in [GameMode.complex, .hyper] {
+    for flag in 1...4 {
+        let first = Board(w: 9, h: 9, mines: 10, seed: 99, mode: mode)
+        for _ in 0..<flag { first.cycleFlag(4, 4) }
+        first.cycleFlag(4, 5)
+        check(first.reveal(4, 4) == ACT_OK && first.isStarted(), "带旗首击必须开局")
+        check(first.cellAt(4, 4).isOpen && first.cellAt(4, 4).flag == 0, "首击必须清旗并翻开")
+        check(!first.cellAt(4, 5).isOpen && first.cellAt(4, 5).flag == 1, "连片不能清除其他旗")
+        check(first.flagsTotal() == 1, "首击后旗数不正确")
+        for t in 0..<4 { check(first.unmarked(t) == first.typeTotal[t] - (t == 0 ? 1 : 0), "首击计雷器不正确") }
+
+        for mine in [false, true] {
+            let b = Board(w: 9, h: 9, mines: 10, seed: 99, mode: mode)
+            b.startAt(4, 4)
+            let target = b.cells.first { !$0.isOpen && ($0.mineKind >= 0) == mine }!
+            for _ in 0..<flag { b.cycleFlag(target.row, target.col) }
+            check(b.reveal(target.row, target.col) == (mine ? ACT_BOOM : ACT_OK), "清旗后必须按真实雷型翻开")
+            check(target.isOpen && target.flag == 0 && b.flagsTotal() == 0, "翻开后必须清除标记")
+            for t in 0..<4 { check(b.unmarked(t) == b.typeTotal[t], "清旗后计雷器未恢复") }
+            if mine {
+                check(b.isOver() && !b.isWon() && target.exploded, "带旗雷必须正常结算失败")
+                let other = b.cells.first { !$0.isOpen }!
+                let before = other.flag
+                check(b.reveal(other.row, other.col) == ACT_IGNORED && other.flag == before, "结算后不能清旗或翻开")
+            }
+        }
     }
-    check(target >= 0, "没找到可插旗的非雷格")
-    let r = target / b.w
-    let c = target % b.w
-    b.cycleFlag(r, c)
-    check(b.cells[target].flag == 1, "插旗失败")
-    let act = b.reveal(r, c)
-    check(act == ACT_IGNORED, "插了旗的格子居然被翻开了")
-    check(!b.cells[target].isOpen, "插了旗的格子还是被翻开了")
-    // 循环一圈回到空
-    for _ in 0..<4 { b.cycleFlag(r, c) }
-    check(b.cells[target].flag == 0, "旗子循环没有回到空")
-    check(b.unmarked(0) == b.typeTotal[0], "清旗后计数没还原")
-    print("✓ 旗子保护格子；循环一圈 空 → +1 → -1 → +i → -i → 空")
 }
+print("✓ 两种模式×四种标记：首击清旗、安全格、踩雷、计数及其他旗保护")
 
 // ---------- 5. 展开判定 ----------
 do {
@@ -211,7 +219,7 @@ do {
     b.cycleFlag(wrongIdx / b.w, wrongIdx % b.w)
 
     // 手动触发失败结算：翻一颗没插旗的雷
-    // （插了旗的雷翻不开，那是旗子在保护格子，这里不能拿它当引信）
+    // （保留已有旗帜用于验证结算标记，另选未插旗的雷作为引信）
     var mineIdx = -1
     for i in 0..<b.cells.count where b.cells[i].mineKind >= 0 && !b.cells[i].isOpen && b.cells[i].flag == 0 {
         mineIdx = i
@@ -357,15 +365,14 @@ for d in kDifficulties {
     check(n == d.mines, "\(d.label) 的雷数不对")
 }
 
-// 首击旗子保护、直接 reveal 开局、重复 startAt 与越界动作。
+// 带旗直接 reveal 开局、重复 startAt 与越界动作。
 do {
     let b = Board(w: 9, h: 9, mines: 10, seed: 1)
     b.cycleFlag(4, 4)
     b.startAt(4, 4)
     check(!b.isStarted(), "带旗首击不能布雷")
-    check(b.reveal(4, 4) == ACT_IGNORED && !b.isStarted(), "带旗首击不能开局")
-    for _ in 0..<4 { b.cycleFlag(4, 4) }
-    check(b.reveal(4, 4) == ACT_OK && b.isStarted(), "撤旗后 reveal 应正常开局")
+    check(b.reveal(4, 4) == ACT_OK && b.isStarted(), "带旗 reveal 应清旗并正常开局")
+    check(b.cellAt(4, 4).flag == 0 && b.flagsTotal() == 0, "首击必须归还旗数")
     check(b.mineTotal() == 10 && b.cellAt(4, 4).isOpen, "直接 reveal 必须布置真实棋盘")
     let snapshot = b.cells.map { "\($0.mineKind),\($0.clue),\($0.isOpen)" }
     b.startAt(0, 0)
@@ -376,7 +383,7 @@ do {
         check(!b.cycleFlag(r, c), "越界插旗必须忽略")
         b.startAt(r, c)
     }
-    print("✓ 首击旗子保护、直接开局、重复开局与越界动作")
+    print("✓ 带旗直接开局、重复开局与越界动作")
 }
 
 do {

@@ -52,6 +52,16 @@ const val MAX_SECONDS: Int = 9999
 class GameController(context: Context) : ViewModel() {
 
     private val appContext = context.applicationContext
+    private val appearancePrefs = appContext.getSharedPreferences("complexsweeper_settings", Context.MODE_PRIVATE)
+    var colorEnabled by mutableStateOf(runCatching { appearancePrefs.getBoolean("colorEnabled", true) }.getOrDefault(true))
+        private set
+
+    fun selectColor(enabled: Boolean) {
+        if (colorEnabled == enabled) return
+        colorEnabled = enabled
+        appearancePrefs.edit().putBoolean("colorEnabled", colorEnabled).apply()
+    }
+
     private val sound = SoundBoard(appContext)
     private val feedback = Feedback(appContext)
     val stats = StatsStore(appContext, DIFFICULTIES.size * GameMode.entries.size)

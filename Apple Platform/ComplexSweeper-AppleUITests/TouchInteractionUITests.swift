@@ -1,16 +1,7 @@
 import XCTest
 
-/// 触屏交互的回归测试。
-///
-/// 这两条测试都是**用真触摸事件**跑的（XCUITest 往模拟器里注入），所以它们能回答
-/// 「点一下到底生效没有」这种光看代码看不出来的问题。
-///
-/// 观测点用的是状态行那一句提示：
-///   - 还没开局：「长按翻开第一格，四种雷的数量开局后公布」
-///   - 已经开局：以「单击标记」开头
-/// 于是「轻点有没有插上旗」可以这样判定 —— 轻点某一格之后长按**同一格**：
-/// 旗子保护格子，翻不开，状态行应当纹丝不动；要是那一下轻点没生效，长按就会把
-/// 这一格翻开，状态行立刻变成「单击标记…」，测试当场红在这里并报出是哪一格。
+/// 触屏交互回归：用真实触摸事件验证轻点循环标记、长按清旗翻开与布局。
+
 final class TouchInteractionUITests: XCTestCase {
 
     private var app: XCUIApplication!
@@ -75,22 +66,23 @@ final class TouchInteractionUITests: XCTestCase {
         app.descendants(matching: .any).matching(identifier: "cell-\(row)-\(col)").firstMatch
     }
 
-    /// 长按带旗格之后，下一次轻点必须仍能循环旗帜。
-    func testFlagCycleAfterLongPress() {
+    /// 两种模式的每种标记都能长按清除并安全首击，其他标记不被连片清除。
+    func testLongPressClearsEveryFlagAndStartsGame() {
         XCTAssertTrue(board.waitForExistence(timeout: 15))
-        let target = cell(0, 0)
-        XCTAssertTrue(target.waitForExistence(timeout: 5))
-        target.tap()
-        XCTAssertEqual(target.value as? String, "旗帜 +1")
-        target.press(forDuration: 0.6)
-        XCTAssertTrue(readyStatus.exists)
-        XCTAssertEqual(target.value as? String, "旗帜 +1")
-        for expected in ["旗帜 -1", "旗帜 +i", "旗帜 -i", "未翻开"] {
-            target.tap()
-            XCTAssertEqual(target.value as? String, expected)
+        for mode in 0...1 {
+            app.buttons["mode-\(mode)"].tap()
+            for flag in 1...4 {
+                app.descendants(matching: .any).matching(identifier: "restart").firstMatch.tap()
+                let target = cell(0, 0)
+                for _ in 0..<flag { target.tap() }
+                XCTAssertTrue((target.value as? String ?? "").hasPrefix("旗帜"))
+                cell(0, 1).tap()
+                target.press(forDuration: 0.6)
+                XCTAssertTrue(startedStatus.waitForExistence(timeout: 5))
+                XCTAssertEqual(target.value as? String, "空白")
+                XCTAssertEqual(cell(0, 1).value as? String, "旗帜 +1")
+            }
         }
-        target.press(forDuration: 0.6)
-        XCTAssertTrue(startedStatus.waitForExistence(timeout: 5))
     }
 
     /// 插旗后计雷器立即更新，不能依赖计时或重建页面来刷新。
@@ -110,6 +102,11 @@ final class TouchInteractionUITests: XCTestCase {
         XCTAssertEqual(counter.value as? String, "\(initial - 1)")
         target.tap()
         XCTAssertEqual(counter.value as? String, "\(initial)")
+        let negative = app.descendants(matching: .any).matching(identifier: "counter-1").firstMatch
+        let negativeBefore = Int(negative.value as? String ?? "")!
+        target.press(forDuration: 0.6)
+        XCTAssertFalse((target.value as? String ?? "").hasPrefix("旗帜"))
+        XCTAssertEqual(negative.value as? String, "\(negativeBefore - 1)")
     }
 
     /// 横向拖动高级棋盘只滚动，不能插旗或开局；重开恢复初始滚动位置。
@@ -130,7 +127,7 @@ final class TouchInteractionUITests: XCTestCase {
         XCTAssertEqual(first.frame.minX, originalX, accuracy: 1)
     }
 
-    /// 长按能翻开第一格，轻点能插旗，而且旗子确实保护格子。
+    /// 长按能翻开第一格。
     func testLongPressRevealsAndTapFlags() {
         XCTAssertTrue(board.waitForExistence(timeout: 15), "找不到棋盘面板")
         XCTAssertTrue(readyStatus.waitForExistence(timeout: 5), "开局前的状态行没出现")
@@ -140,48 +137,20 @@ final class TouchInteractionUITests: XCTestCase {
         XCTAssertTrue(startedStatus.waitForExistence(timeout: 5), "长按没有翻开第一格")
     }
 
-    /// 逐格轻点：每一次轻点都必须真的插上旗。
-    ///
-    /// 两个失败原因要分清楚，所以分开记：
-    ///   - 轻点之后状态行就变了 → 这一下轻点被当成了长按（翻开了格子）
-    ///   - 轻点之后没变、长按之后才变 → 轻点根本没生效，格子是被后面那次长按翻开的
+    /// 逐格轻点都应插旗，不能误触成长按；完整循环应回到未翻开。
     func testEveryTapRegisters() {
-        XCTAssertTrue(board.waitForExistence(timeout: 15), "找不到棋盘面板")
-        XCTAssertTrue(readyStatus.waitForExistence(timeout: 5), "开局前的状态行没出现")
-
-        // 挑开中心格（首击格开出来是一片），只在外圈取点，保证每次点到的都是没翻开的格子
-        let spots: [(Int, Int)] = [
-            (0, 0), (0, 8), (8, 0), (8, 8), (0, 4), (4, 0), (4, 8), (8, 4),
-        ]
-        var swallowedAsLongPress: [String] = []
-        var neverReachedTheCell: [String] = []
-
+        XCTAssertTrue(board.waitForExistence(timeout: 15))
+        let spots = [(0, 0), (0, 8), (8, 0), (8, 8), (0, 4), (4, 0), (4, 8), (8, 4)]
         for (row, col) in spots {
-            let point = cellCenter(row: row, col: col, cols: 9, rows: 9)
-            let name = "(\(row),\(col))"
-
-            point.tap()
-            if startedStatus.exists {
-                swallowedAsLongPress.append(name)
-                break   // 局已经开了，后面的格子不可信，停在这里
-            }
-
-            // 同一格再长按：旗子保护格子，翻不开。翻开了就说明刚才那一下轻点没插上旗。
-            point.press(forDuration: 0.8)
-            if startedStatus.exists {
-                neverReachedTheCell.append(name)
-                break
+            let target = cell(row, col)
+            target.tap()
+            XCTAssertTrue(readyStatus.exists)
+            XCTAssertEqual(target.value as? String, "旗帜 +1")
+            for expected in ["旗帜 -1", "旗帜 +i", "旗帜 -i", "未翻开"] {
+                target.tap()
+                XCTAssertEqual(target.value as? String, expected)
             }
         }
-
-        XCTAssertTrue(
-            swallowedAsLongPress.isEmpty,
-            "这一下轻点被当成了长按（翻开了格子）：\(swallowedAsLongPress)"
-        )
-        XCTAssertTrue(
-            neverReachedTheCell.isEmpty,
-            "轻点没插上旗，格子是被后面那次长按翻开的：\(neverReachedTheCell)"
-        )
     }
 
     /// 反复切难度不能崩 —— 曾经在高级 30 列切回中级时越界闪退。
@@ -244,4 +213,72 @@ final class TouchInteractionUITests: XCTestCase {
         XCTAssertEqual(counter.label,"+i 剩余雷数")
         XCTAssertTrue(readyStatus.exists)
     }
+    func testAppearanceKeepsBoardAndPersistsAfterRelaunch() {
+        XCTAssertTrue(board.waitForExistence(timeout: 15))
+        let appearance = app.segmentedControls["appearance"]
+        XCTAssertTrue(appearance.exists)
+        let initial = appearance.buttons["彩色"].isSelected ? "彩色" : "黑白"
+        let selected = initial == "彩色" ? "黑白" : "彩色"
+        defer { appearance.buttons[initial].tap() }
+        cell(0, 0).tap()
+        cell(4, 4).press(forDuration: 0.6)
+        XCTAssertTrue(startedStatus.waitForExistence(timeout: 5))
+        let cells = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'cell-'")
+        )
+        let before = cells.allElementsBoundByIndex.map { "\($0.identifier):\($0.value as? String ?? "")" }
+        appearance.buttons[selected].tap()
+        XCTAssertTrue(appearance.buttons[selected].isSelected)
+        appearance.buttons[selected].tap()
+        XCTAssertTrue(appearance.buttons[selected].isSelected)
+        XCTAssertEqual(cell(0, 0).value as? String, "旗帜 +1")
+        XCTAssertTrue(startedStatus.exists)
+        XCTAssertEqual(cells.allElementsBoundByIndex.map { "\($0.identifier):\($0.value as? String ?? "")" }, before)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "appearance-switched"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(appearance.waitForExistence(timeout: 15))
+        XCTAssertTrue(appearance.buttons[selected].isSelected)
+        // 外观同样适用于双曲模式；切换仍保留 j 旗帜。
+        app.buttons["mode-1"].tap()
+        cell(0, 0).tap(); cell(0, 0).tap(); cell(0, 0).tap()
+        appearance.buttons[initial].tap()
+        XCTAssertEqual(cell(0, 0).value as? String, "旗帜 +j")
+    }
+
+    func testAppearanceAndDifficultyFitBothOrientations() {
+        XCTAssertTrue(board.waitForExistence(timeout: 15))
+        defer { XCUIDevice.shared.orientation = .portrait }
+        for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
+            XCUIDevice.shared.orientation = orientation
+            let appearance = app.segmentedControls["appearance"]
+            let difficulty = app.segmentedControls["difficulty"]
+            XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+            XCTAssertTrue(difficulty.exists)
+            if orientation == .landscapeLeft {
+                XCTAssertGreaterThan(app.frame.width, app.frame.height)
+            } else {
+                XCTAssertGreaterThan(app.frame.height, app.frame.width)
+            }
+            XCTAssertTrue(appearance.buttons["彩色"].isHittable)
+            XCTAssertTrue(appearance.buttons["黑白"].isHittable)
+            XCTAssertTrue(difficulty.buttons["高级"].isHittable)
+            XCTAssertGreaterThanOrEqual(appearance.frame.minX, difficulty.frame.maxX - 1)
+            XCTAssertLessThanOrEqual(appearance.frame.maxX, app.frame.maxX + 1)
+            XCTAssertEqual(appearance.frame.midY, difficulty.frame.midY, accuracy: 4)
+            let selected = appearance.buttons["彩色"].isSelected ? "彩色" : "黑白"
+            let target = cell(0, 0)
+            let previous = target.value as? String
+            appearance.buttons[selected].tap()
+            XCTAssertEqual(target.value as? String, previous)
+            let capture = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            capture.name = "appearance-layout-\(orientation.rawValue)"
+            capture.lifetime = .keepAlways
+            add(capture)
+        }
+    }
+
 }

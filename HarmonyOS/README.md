@@ -1,7 +1,7 @@
 # HarmonyOS 移植与工程说明
 
-**当前版本 1.1.0（versionCode 1001000）**。底部 HDS Tabs 切换圆复数 / 闵可夫斯基模式，棋盘上方使用 ArkUI 原生 `TabSegmentButtonV2` 选择难度。
-下载与签名说明见 [v1.1.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.1.0)。
+**当前版本 1.2.0（versionCode 1002000）**。底部 HDS Tabs 切换圆复数 / 闵可夫斯基模式，棋盘上方使用 ArkUI 原生 `TabSegmentButtonV2` 选择难度。
+1.2.0 下载与签名说明见 [v1.2.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.2.0)。
 
 本目录是复扫雷的 ArkTS / ArkUI 原生工程，也是三端共同移动功能的移植基准。
 应用介绍、玩法、原作致谢与共同范围见[仓库总 README](../README.md)。以下命令均在 `HarmonyOS/` 中执行。
@@ -70,6 +70,15 @@ Cell 使用 `@Observed`，格子通过 `@ObjectLink` 观察变化；开局与插
 
 音频与 2in1 状态栏配色在部分设备上缺少系统能力，现有实现会降级为静音或系统默认配色。
 这些构建提示与具体设备能力有关，需要结合目标设备验证。
+
+## 彩色与黑白外观（1.2.0）
+
+顶部提供「彩色｜黑白」原生分段选择器，默认彩色，立即更新全部游戏贴图；切换保留局面与计时，重启恢复偏好。
+两套资源分别使用 `cw_` / `cw_bw_` 前缀，均来自上游 `f6b80bb` 的专用图集；黑白图案包含上游绘制的符号与纹理。
+从仓库根目录执行 `node scripts/sync-appearance-assets.ts` 可重建三端两套素材、静态映射和启动图标。
+2026-10-17，PLA-AL10真机覆盖安装1.2.0，6项原生回归通过（0失败、0错误），含外观切换保留局面。外观使用 `TabSegmentButtonV2`，通过 `HdsNavigation.titleBar.content.stackBuilder` 固定在顶栏中央；难度选择单独保留在棋盘上方。
+2026-10-18，顶栏版本在PLA-AL10真机7项回归通过（0失败、0错误），含外观与关于按钮同处顶栏的位置检查。
+本次验证与设备测试边界见 [APPEARANCE_SYNC.md](../docs/APPEARANCE_SYNC.md)。
 
 ## 素材、图标与界面预览
 
@@ -151,3 +160,5 @@ hdc shell aa test -b top.rayawa.complexsweeper -m entry_test \
 游戏图集和音效变更需要同步三个平台，图标通过本平台脚本重新生成。
 共同功能与进度在[总 README](../README.md#移植范围与进度)维护；本目录保留平台实现和工程说明。
 详细历史回归见 [PORTING_STATUS.md](docs/PORTING_STATUS.md)，源码许可证见 [LICENSE](LICENSE)。
+
+2026-10-18追加：长按带标记格会清除标记并翻开，计雷器同步更新；其他格的标记仍受连片展开保护。验证与设备边界见 [长按清旗验收](../docs/FLAG_REVEAL_2026-10-18.md)。

@@ -28,3 +28,7 @@
 
 # Release packages stay in GitHub Releases
 /artifacts/
+
+# Local signing configuration; never commit credentials.
+/HarmonyOS/build-profile.json5
+/build-profile.json5

@@ -1,166 +1,32 @@
-# ComplexSweeper · 复扫雷
+# ComplexSweeper
 
-> 扫雷，但雷是复数。
+English | [简体中文](README_zh.md)
 
-复扫雷是一款保留经典扫雷像素风格的逻辑游戏，支持圆复数和闵可夫斯基两种模式。
-棋盘上有四种雷：圆复数为 +1、−1、+i、−i，闵可夫斯基为 +1、−1、+j、−j。
-格子上的数字由周围所有雷之和按当前模式计算，翻开全部非雷格子即可通关。
-两种模式中，看到 0 都不代表周围没有雷。
+Native mobile and desktop Minesweeper variants with complex and split-complex mine values.
 
-本仓库统一维护 **HarmonyOS、Android、iOS / iPadOS / macOS** 的原生移植。
-三端共用原作的规则、随机数算法、图像和音效，各自使用平台原生界面与系统能力。
+## Overview
 
-## 原作与移植说明
+The game sums signed real and imaginary mine values rather than counting adjacent mines. Circular-complex and split-complex modes share three standard difficulties, first-click protection, flags and records. A displayed zero can result from cancellation and does not imply an empty neighborhood. Native HarmonyOS, Android and Apple projects implement the rules separately.
 
-原作是[青月晓](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game)开发的
-[Complexweeper Windows 版](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game)，使用 Zig / Win32。
-本项目已同步原作主分支 **`f6b80bb`（源码版本 1.3.0）**，由 **Ray Chen（Rayawa）**维护；先以鸿蒙版建立移动端实现，再对齐 Apple 和安卓版本。
-感谢原作者与上游贡献者提供游戏设计、圆复数的 24 个与双曲复数的 39 个可达显示值、展开判据、像素素材和六段音效。
-三端应用「关于」中的原作者署名均可点击打开原仓库。
+## Technology and Dependencies
 
-原作对外名称拼作 **Complexweeper**，本项目采用其内部窗口类名 **ComplexSweeper**；应用中文名称统一为「复扫雷」。
-Windows 原作通过上面的链接访问，不包含在本仓库的三个平台工程中。
+HarmonyOS: ArkTS/ArkUI/HDS and DevEco Studio, minimum API 23. Android: Kotlin/Compose and Gradle, minimum API 31. Apple: SwiftUI with platform UI integration, iOS/iPadOS 17+ and macOS 14+. Each platform keeps its own dependencies and build configuration.
 
-## 下载与安装
+## Repository Structure
 
-当前版本为 **1.2.0**，新增彩色／黑白分段切换及长按清旗翻开，见 [v1.2.0 Release](https://github.com/Rayawa/ComplexSweeper/releases/tag/v1.2.0) 与[发布说明](docs/releases/v1.2.0.md)。
+- `HarmonyOS/` — HarmonyOS native project
+- `Android/` — Android native project
+- `Apple Platform/` — shared Apple-platform project
+- `docs/` — rules, porting and release notes
+- `scripts/` — shared validation and asset tools
+- `LICENSE` — GPL-3.0 license
 
-- Android：下载 `ComplexSweeper-v1.2.0-android.apk`，使用与首版一致的开发测试证书签名，可直接安装。
-- macOS：下载 `ComplexSweeper-v1.2.0-macos.zip`，解压为 `复扫雷.app`，支持 Apple Silicon 与 Intel；未配置 Developer ID 分发签名或公证。
-- HarmonyOS：下载 `ComplexSweeper-v1.2.0-harmonyos-unsigned.hap`，需使用自己的证书与描述文件签名后安装。
-- iOS / iPadOS：真机未签名 App 与模拟器 App 分别提供 ZIP；真机 App 需自行签名，模拟器包只用于模拟器。
+## Quick Start
 
-Release 同时提供未签名 Android APK / AAB、`SHA256SUMS.txt` 和 `manifest.json`。附件的用途、签名范围与校验方式见发布说明。
+Choose a platform:
 
-## 支持平台
+- Open `HarmonyOS/` in DevEco Studio and configure local signing before running.
+- Open `Android/` in Android Studio, or run `./gradlew :app:assembleDebug` from that directory.
+- Open `Apple Platform/ComplexSweeper-Apple.xcodeproj` in Xcode and select the destination and local signing configuration.
 
-| 平台 | 系统要求 | 实现 | 工程文档 |
-| --- | --- | --- | --- |
-| HarmonyOS | 工程最低兼容 6.1.0（API 23） | ArkTS / ArkUI / HDS | [HarmonyOS 移植与工程说明](HarmonyOS/README.md) |
-| Android | Android 12+（API 31） | Kotlin / Jetpack Compose | [Android 移植与工程说明](Android/README.md) |
-| iOS / iPadOS | 17+ | SwiftUI / UIKit | [Apple 平台移植与工程说明](Apple%20Platform/README.md) |
-| macOS | 14+ | SwiftUI / AppKit | [Apple 平台移植与工程说明](Apple%20Platform/README.md) |
-
-## 规则与玩法
-
-**圆复数模式**的四种雷分别是正实雷 +1、负实雷 −1、正虚雷 +i、负虚雷 −i，其中 i² = −1。
-一个格子的数字由八邻域内所有雷相加，再取复数的模长得到。
-例如周围有一颗 +1 和一颗 −i，和为 1−i，格子显示 √2。
-八邻域最多有八颗雷，共有 24 种可达显示值。
-
-**空白和 0 不同**：空白表示周围完全没有雷，会自动连片展开；0 表示周围有雷，但正负抵消，不会继续扩散。
-长按带标记格会清除该格标记并翻开，计雷器同步更新；空白连片展开与数字格展开仍跳过其他带标记格。
-首次翻开时才布雷，首击格及其八邻域安全（九宫格），四种雷的数量随机分配，开局后在顶部四个计雷器上公布。
-
-| 难度 | 棋盘（列 × 行） | 雷数 |
-| --- | --- | --- |
-| 初级 | 9 × 9 | 10 |
-| 中级 | 16 × 16 | 40 |
-| 高级 | 30 × 16 | 99 |
-
-高级棋盘在小屏幕上可以横向拖动，矮窗支持纵向滚动。
-底部 Tabs 选择圆复数 / 闵可夫斯基模式，棋盘上方分段选择初级 / 中级 / 高级。
-点人脸重开当前模式与难度；切换模式保留难度并重开，切换难度保留模式并重开，重复选择当前项保留当前局。
-标题栏「关于」包含教程、版本、原作者和移植者信息。
-
-| 操作 | HarmonyOS / Android / iOS / iPadOS | macOS |
-| --- | --- | --- |
-| 翻开未翻开的格子（自动清除该格标记） | 长按 400ms | 左键 |
-| 标记未翻开的格子 | 轻点 | 右键 |
-| 展开已翻开的数字格 | 轻点 | 右键 |
-| 重开 | 点人脸按钮 | 点人脸按钮 |
-
-标记按「空 → +1 → −1 → +i / +j → −i / −j → 空」循环。
-圆复数模式的展开要求周围旗数等于真实雷数，且实虚雷数比例与真实比例相同或互为倒数；双曲判据见下节。条件不满足时给出提示。
-翻开全部非雷格即获胜，踩雷则失败。结局会显示全部雷，并给旗帜标对错：雷上绿勾、非雷上红叉，判断位置而不评判旗帜类型。
-两种模式各自保存三档最快纪录、胜负场次，并提供计时、音效和平台触感反馈；圆复数原有存档键保持不变。
-
-## 闵可夫斯基模式
-
-双曲虚数单位 j² = +1。四种雷为 +1、−1、+j、−j，实部对应类空部，j 部对应类时部。
-邻域和为 a+bj 时，格子存整数 D = a²−b²，显示 √D；D<0 显示为 √|D|i，例如 −4 显示 2i。
-八邻域共有 39 个可达显示值。+1 与 +j 可以产生 0，零值不一定来自正负抵消；只有周围完全无雷的空白格会自动扩散。
-
-按原版源码的默认严格展开判据：旗数必须等于真实雷数，旗帜净和与真雷净和的 |a|、|b| 必须分别相等；允许各分量取反，不允许交换实部与 j 部。只要求显示值相等的备选判据未暴露为游戏设置。
-雷、旗、爆炸、正确标记与计雷器单位按模式使用 i / j 贴图；负显示值中的 i 是显示值单位，与 j 雷单位不同。
-
-## 移植范围与进度
-
-更新时间：2026-10-18。三端同步原版 `f6b80bb`（源码版本 1.3.0）的彩色／黑白图集与外观切换，并支持长按清旗翻开；移植应用版本为 1.2.0。
-
-| 功能 | HarmonyOS | Apple | Android |
-| --- | --- | --- | --- |
-| 圆复数、四种雷、24 个显示值 | 已实现 | 已实现 | 已实现 |
-| 三档难度、随机雷型、首击九宫格安全 | 已实现 | 已实现 | 已实现 |
-| 空白连片展开、长按清旗翻开、实虚比例展开判据 | 已实现 | 已实现 | 已实现 |
-| 四计雷器、计时、人脸重开、教程、最快纪录 | 已实现 | 已实现 | 已实现 |
-| 胜负复盘、像素贴图、六段音效 | 已实现 | 已实现 | 已实现 |
-| 触屏轻点 / 长按、数字展开、棋盘滚动 | 已实现 | 已实现 | 已实现 |
-| 双曲复数 / 闵可夫斯基模式、39 个显示值、严格展开 | 已实现 | 已实现 | 已实现 |
-| 底部模式 Tabs、独立难度选择、分模式纪录 | 已实现 | 已实现 | 已实现 |
-| 自定义雷区与指定四雷配比 | 未移植 | 未移植 | 未移植 |
-| 彩色／黑白切换、外观偏好保存 | 已实现 | 已实现 | 已实现 |
-| 音效开关、独立纪录窗口 | 未移植 | 未移植 | 未移植 |
-
-当前移植范围是**圆复数和闵可夫斯基两种模式及标准三档难度**。自定义雷区、指定四雷配比、音效开关与独立纪录窗口仍待移植。
-
-已对齐首击、结束判定、计雷器刷新、轻点与长按互斥、重开滚动复位和单调时钟计时。
-安卓使用 ViewModel 保留旋转重建前的局面。三端启动图标保留原作像素画，统一主体比例和银灰背景；安卓使用矢量自适应图标，Apple 应用名称统一为「复扫雷」。
-详细实现、修复原因和验证方式见各平台工程文档。
-
-## 仓库结构与开发入口
-
-```text
-ComplexSweeper/
-├── README.md              应用介绍、玩法、移植范围、原作署名
-├── Android/               Android 原生工程与技术文档
-├── Apple Platform/        iOS / iPadOS / macOS 共用 Xcode 工程与技术文档
-└── HarmonyOS/             HarmonyOS 原生工程与技术文档
-```
-
-三个平台工程保留各自的源码、资源、依赖配置与构建工具；当前没有跨语言共享的运行时引擎。
-修改规则时需要同步三份实现，并运行各平台的固定种子回归，检查相同输入下的棋盘和结算行为一致。
-
-开发时用 Android Studio 打开 `Android/`，用 Xcode 打开 `Apple Platform/ComplexSweeper-Apple.xcodeproj`，
-用 DevEco Studio 打开 `HarmonyOS/`。构建命令在对应平台目录内执行，签名使用开发者自己的配置。
-APK / AAB、HAP、App / IPA 的输出路径和安装方式见各平台 README。
-
-GitHub Actions 执行鸿蒙引擎自检、安卓单测 / lint / Debug 构建、Apple 引擎自检及 macOS / iOS 模拟器未签名构建。HarmonyOS HAP 与 Apple 真机签名产物在本机 SDK / 签名环境生成。当前 Release 的附件用途与签名说明见 [v1.2.0 发布说明](docs/releases/v1.2.0.md)。
-
-产品介绍、共同玩法、整体范围与原作署名集中维护在本文件；各平台 README 维护架构、目录、平台适配、资源生成、构建与验证说明。
-
-## 验证记录
-
-1.2.0 的素材来源、外观设置、生成方式与本次验证见 [外观同步记录](docs/APPEARANCE_SYNC.md)。
-2026-10-18 鸿蒙顶栏与 iPhone / iPad 分别验收见 [设备验证记录](docs/VALIDATION_2026-10-18.md)。
-顶部「彩色｜黑白」分段选择器可随时切换，默认彩色，重启恢复偏好；切换保留当前局面、旗帜与计时。
-
-
-2026-10-12，针对 1.1.0 的验证：
-
-| 检查 | 结果 |
-| --- | --- |
-| 三端引擎 | 各 360 局圆复数与 360 局双曲复数回归；39 个双曲显示值与 178,200 次展开判据检查通过；两种模式的固定种子指纹一致 |
-| 资源 | 三端 116 张上游图集 PNG 的 SHA-256 一致 |
-| Android | 15 项 JVM 单测通过；lint 零错误；应用与设备测试 APK 编译通过，设备交互测试尚未执行 |
-| Apple 自动化 | iPhone 18 Pro / iOS 27 模拟器上 8 项 XCUITest 通过；旧存档兼容和分模式战绩隔离检查通过 |
-| iPhone 17 真机 | 模式 / 难度、旗帜循环与保护、计雷器、重开和棋盘拖动验收通过；深浅色下标题均为黑色 |
-| macOS 本机 | 左右键、模式 / 难度、负显示值、展开提示、教程与黑色标题验收通过 |
-| 华为 Mate 70 Pro+ 真机 | 5 项 Hypium / UiTest 全部通过，含原生分段难度选择、旗帜保护、计雷器与重开、反复切难度、关于关闭按钮和署名居中 |
-
-iPhone 无线 XCUITest 的运行器连接未成功，真机结果来自官方设备窗口的实际交互验收；上述 8 项自动化结果来自模拟器。
-详细规则对齐与验证说明见 [新模式同步记录](docs/MODE_SYNC.md)，历史记录见各平台 `docs/PORTING_STATUS.md`。
-
-## 授权与素材
-
-移植代码按 [GPL-3.0](LICENSE) 发布，许可证文本也保留在各平台工程中：
-[HarmonyOS](HarmonyOS/LICENSE)、[Android](Android/LICENSE)、[Apple](Apple%20Platform/LICENSE)。
-
-原始扫雷图像版权属于 Microsoft，原版作者为 Robert Donner、Curt Johnson，这部分图像不属于 GPL-3.0 授权范围。
-新增图像与音效由青月晓按 GPL-3.0 发布。
-逐槽位素材清单、来源与生成说明见 [HarmonyOS 素材说明](HarmonyOS/docs/ASSETS.md)、
-[Android 素材说明](Android/docs/ASSETS.md)与 [Apple 素材说明](Apple%20Platform/docs/ASSETS.md)。
-
-本项目与 Microsoft 无隶属关系，也未获其授权或背书；相关商标属于各自权利人。
-
-2026-10-18追加：长按带标记格会清除标记并翻开，计雷器同步更新；其他格的标记仍受连片展开保护。验证与设备边界见 [长按清旗验收](docs/FLAG_REVEAL_2026-10-18.md)。
+See the platform READMEs for exact build prerequisites: [HarmonyOS](HarmonyOS/README.md), [Android](Android/README.md), [Apple](Apple%20Platform/README.md). The project derives its rules and retained assets from the [upstream Windows implementation](https://github.com/Yueqing-Chen/complexweeper-A-minesweeper-game). Port code uses GPL-3.0; original bitmap assets have separate rights described in the licensing material.

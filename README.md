@@ -115,10 +115,10 @@ Platform project guides describe implementation details, fixes and validation.
 
 ```text
 ComplexSweeper/
-├── README.md              应用介绍、玩法、移植范围、原作署名
-├── Android/               Android 原生工程与技术文档
-├── Apple Platform/        iOS / iPadOS / macOS 共用 Xcode 工程与技术文档
-└── HarmonyOS/             HarmonyOS 原生工程与技术文档
+├── README.md              App overview, gameplay, port scope, upstream credits
+├── Android/               Native Android project and technical documentation
+├── Apple Platform/        Shared iOS / iPadOS / macOS Xcode project and technical documentation
+└── HarmonyOS/             Native HarmonyOS project and technical documentation
 ```
 
 Each platform retains its own source, resources, dependency configuration and build tools. There is currently no shared cross-language runtime engine.
